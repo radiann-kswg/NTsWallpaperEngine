@@ -22,7 +22,7 @@ public class CharacterAssetsDB : MonoBehaviour
     int nowIndex = -1;
     int numAnim;
     float alphaAnim = 0f;
-    const int NUM_ANIM_DURATION = 200;
+    const int NUM_ANIM_DURATION = 300;
 
     [SerializeField]
     Color textColor = new Color(50f / 255f, 50f / 255f, 50f / 255f);
@@ -83,7 +83,7 @@ public class CharacterAssetsDB : MonoBehaviour
         while (alphaAnim > 0f)
         {
             alphaAnim -= Time.deltaTime;
-            numAnim = nowCADB.number + Mathf.CeilToInt(NUM_ANIM_DURATION * alphaAnim);
+            numAnim = nowCADB.number + Mathf.CeilToInt(NUM_ANIM_DURATION * (1.0f - alphaAnim));
 
             SetColorAlphaAnim();
             numText.text = (numAnim % 1000).ToString("D3");
