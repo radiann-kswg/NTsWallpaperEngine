@@ -19,13 +19,19 @@ public class CharacterAssetsDB : MonoBehaviour
     List<CADB> cADBs;
 
     CADB nowCADB;
-    int nowIndex;
+    int nowIndex = -1;
+    int numAnim;
+    float alphaAnim = 0f;
+    const int NUM_ANIM_DURATION = 200;
+
+    [SerializeField]
+    Color textColor = new Color(50f / 255f, 50f / 255f, 50f / 255f);
 
     [SerializeField]
     Image characterImage;
 
     [SerializeField]
-    Text numText, nameText, name1Text;
+    Text numText, nameText, name1Text, clockText;
 
     DateTime nowDateTime;
     
@@ -33,8 +39,8 @@ public class CharacterAssetsDB : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        ChangeCA();
-        nowDateTime = DateTime.Now;
+        SetNowDateTime();
+        StartCoroutine(AnimateCADB(true));
     }
 
     // Update is called once per frame
@@ -42,8 +48,8 @@ public class CharacterAssetsDB : MonoBehaviour
     {
         if(nowDateTime.Minute != DateTime.Now.Minute)
         {
-            nowDateTime = DateTime.Now;
-            ChangeCA(false);
+            SetNowDateTime();
+            StartCoroutine(AnimateCADB(false));
         }
     }
 
@@ -59,12 +65,59 @@ public class CharacterAssetsDB : MonoBehaviour
         return cADBs[nowIndex];
     }
 
-    void ChangeCA(bool isRandom = true)
+    void SetNowDateTime()
+    {
+        nowDateTime = DateTime.Now;
+        if (clockText)
+            clockText.text = nowDateTime.Hour.ToString("D2") + " " + nowDateTime.Minute.ToString("D2");
+    }
+
+    void ChangeCA(bool isRandom)
     {
         nowCADB = isRandom ? ReturnRandomCADB() : ReturnNextCADB();
+    }
+
+    IEnumerator FadeOutCADB()
+    {
+        if (nowIndex < 0) yield break;
+        while (alphaAnim > 0f)
+        {
+            alphaAnim -= Time.deltaTime;
+            numAnim = nowCADB.number + Mathf.CeilToInt(NUM_ANIM_DURATION * alphaAnim);
+
+            SetColorAlphaAnim();
+            numText.text = (numAnim % 1000).ToString("D3");
+            yield return null;
+        }
+        alphaAnim = 0f;
+        SetColorAlphaAnim();
+        numText.text = ((nowCADB.number + NUM_ANIM_DURATION) % 1000).ToString("D3");
+    }
+
+    IEnumerator AnimateCADB(bool isRandom)
+    {
+        yield return StartCoroutine(FadeOutCADB());
+        ChangeCA(isRandom);
         characterImage.sprite = nowCADB.image;
-        numText.text = nowCADB.number.ToString("D3");
         nameText.text = nowCADB.name;
         name1Text.text = nowCADB.name_1;
+        while (alphaAnim < 1f)
+        {
+            alphaAnim += Time.deltaTime;
+            numAnim = nowCADB.number - Mathf.CeilToInt(NUM_ANIM_DURATION * (1f - alphaAnim));
+
+            SetColorAlphaAnim();
+            numText.text = ((numAnim + 1000) % 1000).ToString("D3");
+            yield return null;
+        }
+        alphaAnim = 1f;
+        SetColorAlphaAnim();
+        numText.text = nowCADB.number.ToString("D3");
+    }
+
+    void SetColorAlphaAnim()
+    {
+        characterImage.color = new Color(1f, 1f, 1f, alphaAnim);
+        numText.color = nameText.color = name1Text.color = new Color(textColor.r, textColor.g, textColor.b, alphaAnim);
     }
 }
