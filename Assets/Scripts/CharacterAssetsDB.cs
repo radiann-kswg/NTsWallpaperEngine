@@ -22,7 +22,11 @@ public class CharacterAssetsDB : MonoBehaviour
     int nowIndex = -1;
     int numAnim;
     float alphaAnim = 0f;
-    const int NUM_ANIM_DURATION = 300;
+    
+    [SerializeField]
+    int numAnimDuration = 300;
+    [SerializeField]
+    float acceralation = 2.65f, animationTime = 1.4f;
 
     [SerializeField]
     Color textColor = new Color(50f / 255f, 50f / 255f, 50f / 255f);
@@ -82,16 +86,16 @@ public class CharacterAssetsDB : MonoBehaviour
         if (nowIndex < 0) yield break;
         while (alphaAnim > 0f)
         {
-            alphaAnim -= Time.deltaTime;
-            numAnim = nowCADB.number + Mathf.CeilToInt(NUM_ANIM_DURATION * (1.0f - alphaAnim));
+            numAnim = nowCADB.number + Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - alphaAnim, acceralation));
 
             SetColorAlphaAnim();
             numText.text = (numAnim % 1000).ToString("D3");
+            alphaAnim -= Time.deltaTime / animationTime;
             yield return null;
         }
         alphaAnim = 0f;
         SetColorAlphaAnim();
-        numText.text = ((nowCADB.number + NUM_ANIM_DURATION) % 1000).ToString("D3");
+        numText.text = ((nowCADB.number + numAnimDuration) % 1000).ToString("D3");
     }
 
     IEnumerator AnimateCADB(bool isRandom)
@@ -103,11 +107,11 @@ public class CharacterAssetsDB : MonoBehaviour
         name1Text.text = nowCADB.name_1;
         while (alphaAnim < 1f)
         {
-            alphaAnim += Time.deltaTime;
-            numAnim = nowCADB.number - Mathf.CeilToInt(NUM_ANIM_DURATION * (1f - alphaAnim));
+            numAnim = nowCADB.number - Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - alphaAnim, acceralation));
 
             SetColorAlphaAnim();
             numText.text = ((numAnim + 1000) % 1000).ToString("D3");
+            alphaAnim += Time.deltaTime / animationTime;
             yield return null;
         }
         alphaAnim = 1f;
