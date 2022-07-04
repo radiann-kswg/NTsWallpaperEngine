@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
 using UnityEngine.UI;
+using System;
+using System.IO;
 
 public class CharacterAssetsDB : MonoBehaviour
 {
@@ -12,11 +13,12 @@ public class CharacterAssetsDB : MonoBehaviour
         public int number;
         public string name;
         public string name_1;
+        public string name_jp;
         public Sprite image;
     }
 
     [SerializeField]
-    List<CADB> cADBs;
+    List<CADB> cADBs, loadedCADBs;
 
     CADB nowCADB;
     int nowIndex = -1;
@@ -35,14 +37,21 @@ public class CharacterAssetsDB : MonoBehaviour
     Image characterImage;
 
     [SerializeField]
-    Text numText, nameText, name1Text, clockText;
+    Text numText, nameText, name1Text, nameJpText, clockText;
 
     DateTime nowDateTime;
-    
+
+    TextAsset csvFile;
+    List<string[]> csvDatas = new List<string[]>();
+
+    [SerializeField]
+    bool isSaveCADB2CSV = false, isLoadCSV2CADB = false;
 
     // Start is called before the first frame update
     void Start()
     {
+        if (isSaveCADB2CSV) _ExportCADBs2CSV();
+        if (isLoadCSV2CADB) _LoadCSV2CADBs();
         SetNowDateTime();
         StartCoroutine(AnimateCADB(true));
     }
@@ -57,15 +66,61 @@ public class CharacterAssetsDB : MonoBehaviour
         }
     }
 
+    // https://qiita.com/mino4273/items/cf0b3bdbdb66b774ab23
+    private void _ExportCADBs2CSV()
+    {
+        StreamWriter sw = new StreamWriter("./Assets/Resources/CADBs.csv", false);
+
+        foreach (CADB i in cADBs)
+        {
+            string _buff = i.number.ToString() + "," + i.name + "," + i.name_1 + "," + i.name_jp + ",";
+            sw.WriteLine(_buff);
+        }
+
+        sw.Flush();
+        sw.Close();
+    }
+
+    // https://note.com/macgyverthink/n/n83943f3bad60
+    private void _LoadCSV2CADBs()
+    {
+        csvFile = Resources.Load("CADBs") as TextAsset;
+        StringReader reader = new StringReader(csvFile.text);
+
+        // , で分割しつつ一行ずつ読み込み
+        // リストに追加していく
+        while (reader.Peek() != -1) // reader.Peaekが-1になるまで
+        {
+            string line = reader.ReadLine(); // 一行ずつ読み込み
+            csvDatas.Add(line.Split(',')); // , 区切りでリストに追加
+        }
+
+        // csvDatas[行][列]を指定して値を自由に取り出せる
+        // Debug.Log(csvDatas[0][1]);
+
+        loadedCADBs = new List<CADB>();
+        foreach (string[] i in csvDatas) {
+            CADB _data = new CADB();
+            _data.number = int.Parse(i[0]);
+            _data.name = i[1];
+            _data.name_1 = i[2];
+            _data.name_jp = i[3];
+            loadedCADBs.Add(_data);
+        }
+
+    }
+
     CADB ReturnRandomCADB()
     {
         nowIndex = Mathf.FloorToInt(UnityEngine.Random.value * cADBs.Count);
+        if (!cADBs[nowIndex].image) return ReturnRandomCADB();
         return cADBs[nowIndex];
     }
 
     CADB ReturnNextCADB()
     {
         nowIndex = (nowIndex + 1) % cADBs.Count;
+        if (!cADBs[nowIndex].image) return ReturnNextCADB();
         return cADBs[nowIndex];
     }
 
@@ -105,6 +160,7 @@ public class CharacterAssetsDB : MonoBehaviour
         characterImage.sprite = nowCADB.image;
         nameText.text = nowCADB.name;
         name1Text.text = nowCADB.name_1;
+        nameJpText.text = nowCADB.name_jp;
         while (alphaAnim < 1f)
         {
             numAnim = nowCADB.number - Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - alphaAnim, acceralation));
@@ -122,6 +178,7 @@ public class CharacterAssetsDB : MonoBehaviour
     void SetColorAlphaAnim()
     {
         characterImage.color = new Color(1f, 1f, 1f, alphaAnim);
-        numText.color = nameText.color = name1Text.color = new Color(textColor.r, textColor.g, textColor.b, alphaAnim);
+        numText.color = nameText.color = name1Text.color = nameJpText.color
+            = new Color(textColor.r, textColor.g, textColor.b, alphaAnim);
     }
 }

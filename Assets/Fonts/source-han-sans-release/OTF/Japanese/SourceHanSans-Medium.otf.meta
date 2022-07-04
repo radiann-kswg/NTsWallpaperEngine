@@ -1,0 +1,33 @@
+fileFormatVersion: 2
+guid: 3e5d4a99761ea814792d48ea8f9a0e61
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontNames:
+  - Source Han Sans
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: ad7768ce9ad8ed84080a63ca4ee292d4, type: 3}
+  - {fileID: 12800000, guid: 8a064dd6859e0504e82f150c7314696b, type: 3}
+  - {fileID: 12800000, guid: 04c487b9a2c0cf54183924d58f889c03, type: 3}
+  - {fileID: 12800000, guid: 461821366cba6cd4f98174c87387e5e1, type: 3}
+  - {fileID: 12800000, guid: 62e86638d6bf21946981858e2d61669c, type: 3}
+  - {fileID: 12800000, guid: 5af8b640bf11e2140951968405bb76ed, type: 3}
+  - {fileID: 12800000, guid: 82fee5ba0e8803b4fb33fe99c303729f, type: 3}
+  - {fileID: 12800000, guid: d027b583a804211479a529b3ee090d2e, type: 3}
+  - {fileID: 12800000, guid: f59a2f2ca60ae324c9fdc828829ac4e4, type: 3}
+  - {fileID: 12800000, guid: d6ee36d8308b15949a777af0b9ebed85, type: 3}
+  - {fileID: 12800000, guid: 9ad937558e0bda849a7e51b0060c0a4c, type: 3}
+  - {fileID: 12800000, guid: 8d532ae1029471342ae03aed641f3466, type: 3}
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
