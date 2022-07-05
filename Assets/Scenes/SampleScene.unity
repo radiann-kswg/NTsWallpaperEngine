@@ -123,6 +123,85 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &133364463
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 133364464}
+  - component: {fileID: 133364466}
+  - component: {fileID: 133364465}
+  m_Layer: 5
+  m_Name: Texts (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &133364464
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 133364463}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children:
+  - {fileID: 449713542}
+  - {fileID: 1531625408}
+  - {fileID: 1805317265}
+  - {fileID: 934427238}
+  m_Father: {fileID: 183073100}
+  m_RootOrder: 2
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: -100, y: -350}
+  m_SizeDelta: {x: 400, y: 220}
+  m_Pivot: {x: 1, y: 1}
+--- !u!114 &133364465
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 133364463}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 0.49803922}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &133364466
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 133364463}
+  m_CullTransparentMesh: 1
 --- !u!1 &155808276
 GameObject:
   m_ObjectHideFlags: 0
@@ -296,6 +375,7 @@ RectTransform:
   m_Children:
   - {fileID: 545316081}
   - {fileID: 741249735}
+  - {fileID: 133364464}
   - {fileID: 629758620}
   m_Father: {fileID: 0}
   m_RootOrder: 1
@@ -320,258 +400,462 @@ MonoBehaviour:
   cADBs:
   - number: 1
     name: Unitta
-    name_1: APHR-NT[P]I
+    name_1: APHR-NT [P]I
     name_jp: "\u30CF\u30B8\u30E1"
+    gender: Neutral
+    classname: Uni-Digits & for Testing
+    height: 146
+    age: 14
     image: {fileID: 21300000, guid: 4ebeab510c867d64f822e051a6dc3245, type: 3}
   - number: 2
     name: Twiny
     name_1: APHR-NT I.R
     name_jp: "\u30C4\u30B0"
+    gender: Female
+    classname: Uni-Digits
+    height: 146
+    age: 14
     image: {fileID: 21300000, guid: d6d2d1bd3fd4a614481def855e40fb63, type: 3}
   - number: 2
     name: Binor (Twicy)
     name_1: APHR-NT [P]II
     name_jp: "\u30D0\u30A4\u30CA\uFF08\u30C4\u30AE\uFF09"
+    gender: Female
+    classname: for Developer System (Retired)
+    height: 150
+    age: 17
     image: {fileID: 21300000, guid: b1f6deaab7f4c42489dee50752680547, type: 3}
   - number: 3
     name: Treiya
     name_1: APHR-NT III
     name_jp: "\u30CA\u30AA"
+    gender: Neutral
+    classname: Uni-Digits
+    height: 160
+    age: 17
     image: {fileID: 21300000, guid: a81e4fab39eaa6847943ac8dc3cd041f, type: 3}
   - number: 4
     name: Forna
     name_1: APHR-NT IV
     name_jp: "\u30E2\u30C1"
+    gender: Female
+    classname: Uni-Digits
+    height: 157
+    age: 17
     image: {fileID: 21300000, guid: feb0d61f6c383c54c86b5cf3048f2bf5, type: 3}
   - number: 5
     name: Fifa
     name_1: APHR-NT V
     name_jp: "\u30A4\u30BA"
+    gender: Female
+    classname: Uni-Digits
+    height: 156
+    age: 17
     image: {fileID: 21300000, guid: 514195db5a2c21f4fb1683da61ebb4b7, type: 3}
   - number: 6
     name: Sics
     name_1: APHR-NT VI
     name_jp: "\u30E0\u30A4"
+    gender: Female
+    classname: Uni-Digits
+    height: 150
+    age: 16
     image: {fileID: 21300000, guid: 3a392fd8697ce4c439d2390cb58fcfa3, type: 3}
   - number: 7
     name: Sevan
     name_1: APHR-NT VII
     name_jp: "\u30CA\u30CA"
+    gender: Neutral
+    classname: Uni-Digits
+    height: 162
+    age: 22
     image: {fileID: 21300000, guid: 4be4eb9a9165e624ba22cb22b3d8b0ee, type: 3}
   - number: 8
     name: Eighas
     name_1: APHR-NT VIII
     name_jp: "\u30EF\u30AB\u30C4"
+    gender: Female
+    classname: Uni-Digits
+    height: 158
+    age: 19
     image: {fileID: 21300000, guid: f2e149d392877014b9864ce51d36cfeb, type: 3}
   - number: 9
     name: Nina
     name_1: APHR-NT IX
     name_jp: "\u30C1\u30AB"
+    gender: Female
+    classname: Uni-Digits
+    height: 160
+    age: 21
     image: {fileID: 21300000, guid: 4eeef8d4aa79e384e971060113b9b410, type: 3}
   - number: 10
     name: Tenim
     name_1: APHR-NT I.FIN
     name_jp: "\u30DF\u30C4\u30EB"
+    gender: Neutral
+    classname: Tens-Digits
+    height: 147
+    age: 15
     image: {fileID: 21300000, guid: 5d0f1c64fe3fa83458f0f81a5d5cf0d6, type: 3}
   - number: 11
     name: Elevan
     name_1: APHR-NT XI
     name_jp: "\u30C8\u30A6\u30A4\u30C1"
+    gender: Neutral
+    classname: Master Tales 9
+    height: 161
+    age: 17
     image: {fileID: 21300000, guid: 200bc9ca7301e494084648f7d93a8eb4, type: 3}
   - number: 13
     name: Thirteena
     name_1: APHR-NT I+III.A
     name_jp: "\u30C8\u30DF"
+    gender: Female
+    classname: Dual Sum-4s
+    height: 148
+    age: 16
     image: {fileID: 21300000, guid: 96c133fe079c4dc41a765a231c66e06e, type: 3}
   - number: 16
     name: Sixteely
     name_1: APHR-NT I+VI.A
     name_jp: "\u30BD\u30ED\u30AF"
+    gender: Female
+    classname: Dual Sum-7s
+    height: 147
+    age: 18?
     image: {fileID: 21300000, guid: 9a11ee192adfd054c8916b17a54be4b1, type: 3}
   - number: 18
     name: Eighteeld
     name_1: APHR-NT I+VIII.A
     name_jp: "\u30C8\u30A6\u30E4"
+    gender: Female
+    classname: Nines Duals
+    height: 153
+    age: 20
     image: {fileID: 21300000, guid: 9d8c6c958a7e366419ec6fcd2637977c, type: 3}
   - number: 19
     name: Ninteels
     name_1: APHR-NT I+IX.A
     name_jp: "\u30C8\u30AF"
+    gender: Neutral
+    classname: Dual Carries
+    height: 157
+    age: 20
     image: {fileID: 21300000, guid: 8090f3f6fddcbc945872c4c03f191e4c, type: 3}
   - number: 20
     name: Twentia
     name_1: APHR-NT II.R
     name_jp: "\u30CF\u30C4\u30AB"
+    gender: Female
+    classname: Tens-Digits
+    height: 152
+    age: 17
     image: {fileID: 21300000, guid: f0f57c6bb000e4843af39d266c7b4f29, type: 3}
   - number: 22
     name: Twin-twina
     name_1: APHR-NT XI+XI
     name_jp: "\u30D5\u30B8"
+    gender: Female
+    classname: Master Tales 9
+    height: 153
+    age: 16
     image: {fileID: 21300000, guid: 8aaf6094369412645871b3c818cb7bc9, type: 3}
   - number: 23
     name: Twinthery
     name_1: APHR-NT II+III.A
     name_jp: "\u30C4\u30B0\u30DF"
+    gender: Female
+    classname: Dual Sum-5s
+    height: 149
+    age: 16?
     image: {fileID: 21300000, guid: bef38ebfcb7bc4d489be71e2e84cef41, type: 3}
   - number: 24
     name: Hourds
     name_1: APHR-NT II+IV.A
     name_jp: "\u30D5\u30C8\u30B7"
+    gender: Female
+    classname: Dual Sum-6s
+    height: 158
+    age: 17
     image: {fileID: 21300000, guid: 8a35f00089e7ea644bd38fc8cd363624, type: 3}
   - number: 25
     name: Quartels
     name_1: APHR-NT II+V
     name_jp: "\u30D5\u30A3\u30BA"
+    gender: Female
+    classname: Dual Sum-7s
+    height: 156
+    age: 16
     image: {fileID: 21300000, guid: 8093c1008404c09448f4d11c7b6ca1fc, type: 3}
   - number: 27
     name: "Twi\xDFven"
     name_1: APHR-NT II+VII
     name_jp: "\u30C4\u30AE\u30CA"
+    gender: Neutral
+    classname: Nines Duals
+    height: 162
+    age: 17
     image: {fileID: 21300000, guid: acd56fb0ef02ce843a04e48eb6d21d54, type: 3}
   - number: 31
     name: Thirtone
     name_1: APHR-NT I+III.B
     name_jp: "\u30DF\u30C4\u30A4"
+    gender: Female
+    classname: Dual Sum-4s
+    height: 147
+    age: 16
     image: {fileID: 21300000, guid: 89c2b304947be494a8d2bc9cafd2e8b8, type: 3}
   - number: 33
     name: Thirthrey
     name_1: APHR-NT III+[R]III
     name_jp: "\u30DF\u30B5"
+    gender: Female
+    classname: Master Tales 9
+    height: 149
+    age: 15
     image: {fileID: 21300000, guid: 23b2906ce865f894392c38c9c84a0ef2, type: 3}
   - number: 36
     name: Trisixa
     name_1: APHR-NT III+VI.A
     name_jp: "\u30DF\u30C8\u30E0"
+    gender: Female
+    classname: Nines Duals
+    height: 150
+    age: 16
     image: {fileID: 21300000, guid: b36bfeba3df136e478612f3d724af58a, type: 3}
   - number: 37
     name: "Tri\xDFven"
     name_1: APHR-NT III+VII.A
     name_jp: "\u30B5\u30CA"
+    gender: Female
+    classname: Dual Carries
+    height: 157
+    age: 19
     image: {fileID: 21300000, guid: 9345b9dd758b749488ab896e9e955bdb, type: 3}
   - number: 39
     name: "Tren\xEDna"
     name_1: APHR-NT III+IX.A
     name_jp: "\u30B5\u30AF"
+    gender: Male
+    classname: Dual Sum-3s
+    height: 162
+    age: 21
     image: {fileID: 21300000, guid: dbab1b5a2f4aece4bb95bfa9dc4a9116, type: 3}
   - number: 42
     name: Fortwis
     name_1: APHR-NT II+IV.B
     name_jp: "\u30E8\u30C4\u30B0"
+    gender: Female
+    classname: Dual Sum-6s
+    height: 157
+    age: 17
     image: {fileID: 21300000, guid: bac8af9bfeb848c478175814e31070e8, type: 3}
   - number: 45
     name: Folfivas
     name_1: APHR-NT IV+V.A
     name_jp: "\u30B7\u30B4"
+    gender: Neutral
+    classname: Nines Duals
+    height: 154
+    age: 16
     image: {fileID: 21300000, guid: 22d6043459745b74689093614d3c6acf, type: 3}
   - number: 47
     name: "Fours\xE9ve"
     name_1: APHR-NT IV+VII.A
     name_jp: "\u30B7\u30CA"
+    gender: Female
+    classname: Dual Sum-11s
+    height: 148
+    age: 17
     image: {fileID: 21300000, guid: 230e87c0db8bd6944917c7829b4b710d, type: 3}
   - number: 55
     name: "Fif\xEDvan"
     name_1: APHR-NT V+[R]V
     name_jp: "\u30A4\u30BD\u30B4"
+    gender: Female
+    classname: Master Tales 9
+    height: 165
+    age: 21
     image: {fileID: 21300000, guid: fa9927d049ec4c74abe5be02553bf605, type: 3}
   - number: 57
     name: Fivens
     name_1: APHR-NT V+VII.A
     name_jp: "\u30A4\u30BA\u30CA"
+    gender: Neutral
+    classname: Dual Sum-3s
+    height: 152
+    age: 17
     image: {fileID: 21300000, guid: 70c8f9d447d8d384e924007c272a6330, type: 3}
   - number: 61
     name: "S\xEDxone/S\xEDon"
     name_1: APHR-NT I+VI.B
     name_jp: "\u30ED\u30AF\u30A4\u30C1/\u30ED\u30A4"
+    gender: Female
+    classname: Dual Sum-7s
+    height: 143
+    age: ??
     image: {fileID: 21300000, guid: 5561b29807c909f4dbdf9f2959627dbc, type: 3}
   - number: 65
     name: Sixfivie
     name_1: APHR-NT V+VI.B
     name_jp: "\u30ED\u30AF\u30B4"
+    gender: Female
+    classname: Dual Sum-11s
+    height: 135
+    age: 10
     image: {fileID: 21300000, guid: 6c9f165e56aa76644be8c697bc2579b2, type: 3}
   - number: 66
     name: Sixis
     name_1: APHR-NT VI+[R]VI
     name_jp: "\u30E0\u30ED\u30AF"
+    gender: Female
+    classname: Master Tales 9
+    height: 154
+    age: 16
     image: {fileID: 21300000, guid: cb39f547c66e34c43922cb2e84e3eb54, type: 3}
   - number: 68
     name: Siceighns
     name_1: APHR-NT VI+VIII.A
     name_jp: "\u30ED\u30AF\u30E4"
+    gender: Neutral
+    classname: Dual Sum-5s
+    height: 147
+    age: 14
     image: {fileID: 21300000, guid: 2f7f08de5922dcf4697cee3f9f4cdc99, type: 3}
   - number: 69
     name: Signine
     name_1: APHR-NT VI+IX
     name_jp: "\u30ED\u30C3\u30AF"
+    gender: Male
+    classname: Dual Sum-6s
+    height: 156
+    age: 20?
     image: {fileID: 21300000, guid: 55c7818dda98a4141960f4223edc62dc, type: 3}
   - number: 70
     name: Seventia
     name_1: APHR-NT [R]VII
     name_jp: "\u30CA\u30CA\u30C8"
+    gender: Male
+    classname: Tens-Digits
+    height: 159
+    age: 17
     image: {fileID: 21300000, guid: 060728f485edd75429727e1c1dd3b3ed, type: 3}
   - number: 72
     name: "Sevtw\xEDna"
     name_1: APHR-NT II+VII.R
     name_jp: "\u30CA\u30D5\u30BF"
+    gender: Neutral
+    classname: Nines Duals
+    height: 162
+    age: 17
     image: {fileID: 21300000, guid: c03b48c0477c57b4eb328aa77732df4d, type: 3}
   - number: 74
     name: Sefoury
     name_1: APHR-NT IV+VII.B
     name_jp: "\u30CA\u30CA\u30E8"
+    gender: Female
+    classname: Dual Sum-11s
+    height: 148
+    age: 17
     image: {fileID: 21300000, guid: 4e198186c5ca68140af7c7611da026d3, type: 3}
   - number: 75
     name: Sefievn
     name_1: APHR-NT V+VII.B
     name_jp: "\u30B7\u30C1\u30B4"
+    gender: Neutral
+    classname: Dual Sum-3s
+    height: 152
+    age: 17
     image: {fileID: 21300000, guid: 42c6f90997a32e4409e4eb2a78d3fe07, type: 3}
   - number: 77
     name: Sefvens
     name_1: APHR-NT VII+[R]VII
     name_jp: "\u30CA\u30C5\u30CA"
+    gender: Neutral
+    classname: Master Tales 9
+    height: 147
+    age: 14?
     image: {fileID: 21300000, guid: 707ce394a0fa6b84aa70f00dde364273, type: 3}
   - number: 81
     name: Eightone
     name_1: APHR-NT I+VIII.B
     name_jp: "\u30E4\u30A4\u30C1"
+    gender: Neutral
+    classname: Nines Duals
+    height: 149
+    age: 18
     image: {fileID: 21300000, guid: 81f297e6c2371444ebda1281075183a7, type: 3}
   - number: 88
     name: Infinights
     name_1: APHR-NT VIII+[R]VIII
     name_jp: "\u30E4\u30BD\u30CF\u30C1"
+    gender: Male
+    classname: Master Tales 9
+    height: 167
+    age: 24
     image: {fileID: 21300000, guid: 7161d20087ccf054e87af5887b671ce1, type: 3}
   - number: 89
     name: Eightine
     name_1: APHR-NT VIII+IX.A
     name_jp: "\u30E4\u30B9\u30E2"
+    gender: Female
+    classname: Dual Sum-8s
+    height: 158
+    age: 21
     image: {fileID: 21300000, guid: 513236f3c6af16b4ca56b080f023ca26, type: 3}
   - number: 93
     name: Nintris
     name_1: APHR-NT III+IX.B
     name_jp: "\u30AF\u30DF"
+    gender: Female
+    classname: Dual Sum-3s
+    height: 144
+    age: 15
     image: {fileID: 21300000, guid: 8795abd74ad23b34988dd7732c45b738, type: 3}
   - number: 94
     name: Ninfors
     name_1: APHR-NT IV+IX.B
     name_jp: "\u30C4\u30AF\u30B7"
+    gender: Neutral
+    classname: Dual Sum-4s
+    height: 145
+    age: 13?
     image: {fileID: 21300000, guid: 652650494f83f9c4ba4e4039cd673e9d, type: 3}
   - number: 96
     name: Rota
     name_1: APHR-NT VI+IX.INV
     name_jp: "\u30AF\u30EB\u30EA"
+    gender: Female
+    classname: Dual Sum-6s
+    height: 153
+    age: ??
     image: {fileID: 21300000, guid: 1e68013ca416a4e448c9037f54395568, type: 3}
   - number: 99
     name: Thukumo
     name_1: APHR-NT [RX]IX
     name_jp: "\u30C4\u30AF\u30E2"
+    gender: Neutral
+    classname: Master Tales 9
+    height: 159
+    age: 16
     image: {fileID: 21300000, guid: fd9e16201e9d33944909b039b9d3008f, type: 3}
   - number: 223
     name: Twitwenthir
     name_1: APHR-NTs #223
     name_jp: "\u30C4\u30C5\u30B5"
+    gender: Neutral
+    classname: Duet Triples VII.A
+    height: 151
+    age: 15
     image: {fileID: 21300000, guid: ee68a94e3b01b2540bd70c432eddffd6, type: 3}
   - number: 0
     name: Thouser
     name_1: APHR-NT 0
     name_jp: "\u30C1\u30C8\u30BB"
+    gender: Neutral
+    classname: for Consulting Assistant
+    height: 165
+    age: 25
     image: {fileID: 21300000, guid: 2e535828af7645f4bb112bf22c36beb7, type: 3}
   loadedCADBs: []
   numAnimDuration: 300
@@ -583,9 +867,92 @@ MonoBehaviour:
   nameText: {fileID: 449849333}
   name1Text: {fileID: 1077304177}
   nameJpText: {fileID: 155808278}
+  genderText: {fileID: 449713543}
+  classnameText: {fileID: 1531625409}
+  heightText: {fileID: 1805317266}
+  ageText: {fileID: 934427239}
   clockText: {fileID: 458145390}
   isSaveCADB2CSV: 0
   isLoadCSV2CADB: 0
+--- !u!1 &449713541
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 449713542}
+  - component: {fileID: 449713544}
+  - component: {fileID: 449713543}
+  m_Layer: 5
+  m_Name: GenderText
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &449713542
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 449713541}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 133364464}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 50}
+  m_Pivot: {x: 1, y: 1}
+--- !u!114 &449713543
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 449713541}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.16981131, g: 0.16981131, b: 0.16981131, a: 0}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 12800000, guid: cdd9d82debc051c48ae43da8f7e0a40b, type: 3}
+    m_FontSize: 40
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 1
+    m_MaxSize: 270
+    m_Alignment: 8
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: 'Gender: Neutral'
+--- !u!222 &449713544
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 449713541}
+  m_CullTransparentMesh: 1
 --- !u!1 &449849330
 GameObject:
   m_ObjectHideFlags: 0
@@ -933,7 +1300,7 @@ RectTransform:
   m_Children:
   - {fileID: 458145392}
   m_Father: {fileID: 183073100}
-  m_RootOrder: 2
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
@@ -1057,6 +1424,85 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 741249734}
   m_CullTransparentMesh: 1
+--- !u!1 &934427237
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 934427238}
+  - component: {fileID: 934427240}
+  - component: {fileID: 934427239}
+  m_Layer: 5
+  m_Name: AgeText
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &934427238
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 934427237}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 133364464}
+  m_RootOrder: 3
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: -150}
+  m_SizeDelta: {x: 0, y: 50}
+  m_Pivot: {x: 1, y: 1}
+--- !u!114 &934427239
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 934427237}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.16981131, g: 0.16981131, b: 0.16981131, a: 0}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 12800000, guid: cdd9d82debc051c48ae43da8f7e0a40b, type: 3}
+    m_FontSize: 40
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 1
+    m_MaxSize: 270
+    m_Alignment: 8
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: 'Consept Age: 17'
+--- !u!222 &934427240
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 934427237}
+  m_CullTransparentMesh: 1
 --- !u!1 &1077304174
 GameObject:
   m_ObjectHideFlags: 0
@@ -1135,6 +1581,164 @@ CanvasRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1077304174}
+  m_CullTransparentMesh: 1
+--- !u!1 &1531625407
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1531625408}
+  - component: {fileID: 1531625410}
+  - component: {fileID: 1531625409}
+  m_Layer: 5
+  m_Name: ClassnameText
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1531625408
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1531625407}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 133364464}
+  m_RootOrder: 1
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: -50}
+  m_SizeDelta: {x: 0, y: 50}
+  m_Pivot: {x: 1, y: 1}
+--- !u!114 &1531625409
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1531625407}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.16981131, g: 0.16981131, b: 0.16981131, a: 0}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 12800000, guid: cdd9d82debc051c48ae43da8f7e0a40b, type: 3}
+    m_FontSize: 40
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 1
+    m_MaxSize: 270
+    m_Alignment: 8
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: 'Class: Nines Duals'
+--- !u!222 &1531625410
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1531625407}
+  m_CullTransparentMesh: 1
+--- !u!1 &1805317264
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1805317265}
+  - component: {fileID: 1805317267}
+  - component: {fileID: 1805317266}
+  m_Layer: 5
+  m_Name: HeightText
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1805317265
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1805317264}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 133364464}
+  m_RootOrder: 2
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: -100}
+  m_SizeDelta: {x: 0, y: 50}
+  m_Pivot: {x: 1, y: 1}
+--- !u!114 &1805317266
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1805317264}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.16981131, g: 0.16981131, b: 0.16981131, a: 0}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 12800000, guid: cdd9d82debc051c48ae43da8f7e0a40b, type: 3}
+    m_FontSize: 40
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 1
+    m_MaxSize: 270
+    m_Alignment: 8
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: 'Height: 162cm'
+--- !u!222 &1805317267
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1805317264}
   m_CullTransparentMesh: 1
 --- !u!1 &1906127705
 GameObject:

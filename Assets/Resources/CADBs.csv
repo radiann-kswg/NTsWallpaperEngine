@@ -1,51 +1,51 @@
-1,Unitta,APHR-NT[P]I,ハジメ,
-2,Twiny,APHR-NT I.R,ツグ,
-2,Binor (Twicy),APHR-NT [P]II,バイナ（ツギ）,
-3,Treiya,APHR-NT III,ナオ,
-4,Forna,APHR-NT IV,モチ,
-5,Fifa,APHR-NT V,イズ,
-6,Sics,APHR-NT VI,ムイ,
-7,Sevan,APHR-NT VII,ナナ,
-8,Eighas,APHR-NT VIII,ワカツ,
-9,Nina,APHR-NT IX,チカ,
-10,Tenim,APHR-NT I.FIN,ミツル,
-11,Elevan,APHR-NT XI,トウイチ,
-13,Thirteena,APHR-NT I+III.A,トミ,
-16,Sixteely,APHR-NT I+VI.A,ソロク,
-18,Eighteeld,APHR-NT I+VIII.A,トウヤ,
-19,Ninteels,APHR-NT I+IX.A,トク,
-20,Twentia,APHR-NT II.R,ハツカ,
-22,Twin-twina,APHR-NT XI+XI,フジ,
-23,Twinthery,APHR-NT II+III.A,ツグミ,
-24,Hourds,APHR-NT II+IV.A,フトシ,
-25,Quartels,APHR-NT II+V,フィズ,
-27,Twißven,APHR-NT II+VII,ツギナ,
-31,Thirtone,APHR-NT I+III.B,ミツイ,
-33,Thirthrey,APHR-NT III+[R]III,ミサ,
-36,Trisixa,APHR-NT III+VI.A,ミトム,
-37,Trißven,APHR-NT III+VII.A,サナ,
-39,Trenína,APHR-NT III+IX.A,サク,
-42,Fortwis,APHR-NT II+IV.B,ヨツグ,
-45,Folfivas,APHR-NT IV+V.A,シゴ,
-47,Fourséve,APHR-NT IV+VII.A,シナ,
-55,Fifívan,APHR-NT V+[R]V,イソゴ,
-57,Fivens,APHR-NT V+VII.A,イズナ,
-61,Síxone/Síon,APHR-NT I+VI.B,ロクイチ/ロイ,
-65,Sixfivie,APHR-NT V+VI.B,ロクゴ,
-66,Sixis,APHR-NT VI+[R]VI,ムロク,
-68,Siceighns,APHR-NT VI+VIII.A,ロクヤ,
-69,Signine,APHR-NT VI+IX,ロック,
-70,Seventia,APHR-NT [R]VII,ナナト,
-72,Sevtwína,APHR-NT II+VII.R,ナフタ,
-74,Sefoury,APHR-NT IV+VII.B,ナナヨ,
-75,Sefievn,APHR-NT V+VII.B,シチゴ,
-77,Sefvens,APHR-NT VII+[R]VII,ナヅナ,
-81,Eightone,APHR-NT I+VIII.B,ヤイチ,
-88,Infinights,APHR-NT VIII+[R]VIII,ヤソハチ,
-89,Eightine,APHR-NT VIII+IX.A,ヤスモ,
-93,Nintris,APHR-NT III+IX.B,クミ,
-94,Ninfors,APHR-NT IV+IX.B,ツクシ,
-96,Rota,APHR-NT VI+IX.INV,クルリ,
-99,Thukumo,APHR-NT [RX]IX,ツクモ,
-223,Twitwenthir,APHR-NTs #223,ツヅサ,
-0,Thouser,APHR-NT 0,チトセ,
+1,Unitta,APHR-NT [P]I,ハジメ,Neutral,Uni-Digits & for Testing,146,14,cnsp_img1
+2,Twiny,APHR-NT I.R,ツグ,Female,Uni-Digits,146,14,cnsp_img2
+2,Binor (Twicy),APHR-NT [P]II,バイナ（ツギ）,Female,for Developer System (Retired),150,17,cnsp_img2-alt
+3,Treiya,APHR-NT III,ナオ,Neutral,Uni-Digits,160,17,cnsp_img3
+4,Forna,APHR-NT IV,モチ,Female,Uni-Digits,157,17,cnsp_img4
+5,Fifa,APHR-NT V,イズ,Female,Uni-Digits,156,17,cnsp_img5
+6,Sics,APHR-NT VI,ムイ,Female,Uni-Digits,150,16,cnsp_img6
+7,Sevan,APHR-NT VII,ナナ,Neutral,Uni-Digits,162,22,cnsp_img7
+8,Eighas,APHR-NT VIII,ワカツ,Female,Uni-Digits,158,19,cnsp_img8
+9,Nina,APHR-NT IX,チカ,Female,Uni-Digits,160,21,cnsp_img9
+10,Tenim,APHR-NT I.FIN,ミツル,Neutral,Tens-Digits,147,15,cnsp_img10
+11,Elevan,APHR-NT XI,トウイチ,Neutral,Master Tales 9,161,17,cnsp_img11
+13,Thirteena,APHR-NT I+III.A,トミ,Female,Dual Sum-4s,148,16,cnsp_img13
+16,Sixteely,APHR-NT I+VI.A,ソロク,Female,Dual Sum-7s,147,18?,cnsp_img16
+18,Eighteeld,APHR-NT I+VIII.A,トウヤ,Female,Nines Duals,153,20,cnsp_img18
+19,Ninteels,APHR-NT I+IX.A,トク,Neutral,Dual Carries,157,20,cnsp_img19
+20,Twentia,APHR-NT II.R,ハツカ,Female,Tens-Digits,152,17,cnsp_img20
+22,Twin-twina,APHR-NT XI+XI,フジ,Female,Master Tales 9,153,16,cnsp_img22
+23,Twinthery,APHR-NT II+III.A,ツグミ,Female,Dual Sum-5s,149,16?,cnsp_img23
+24,Hourds,APHR-NT II+IV.A,フトシ,Female,Dual Sum-6s,158,17,cnsp_img24
+25,Quartels,APHR-NT II+V,フィズ,Female,Dual Sum-7s,156,16,cnsp_img25
+27,Twißven,APHR-NT II+VII,ツギナ,Neutral,Nines Duals,162,17,cnsp_img27
+31,Thirtone,APHR-NT I+III.B,ミツイ,Female,Dual Sum-4s,147,16,cnsp_img31
+33,Thirthrey,APHR-NT III+[R]III,ミサ,Female,Master Tales 9,149,15,cnsp_img33
+36,Trisixa,APHR-NT III+VI.A,ミトム,Female,Nines Duals,150,16,cnsp_img36
+37,Trißven,APHR-NT III+VII.A,サナ,Female,Dual Carries,157,19,cnsp_img37
+39,Trenína,APHR-NT III+IX.A,サク,Male,Dual Sum-3s,162,21,cnsp_img39
+42,Fortwis,APHR-NT II+IV.B,ヨツグ,Female,Dual Sum-6s,157,17,cnsp_img42
+45,Folfivas,APHR-NT IV+V.A,シゴ,Neutral,Nines Duals,154,16,cnsp_img45
+47,Fourséve,APHR-NT IV+VII.A,シナ,Female,Dual Sum-11s,148,17,cnsp_img47
+55,Fifívan,APHR-NT V+[R]V,イソゴ,Female,Master Tales 9,165,21,cnsp_img55
+57,Fivens,APHR-NT V+VII.A,イズナ,Neutral,Dual Sum-3s,152,17,cnsp_img57
+61,Síxone/Síon,APHR-NT I+VI.B,ロクイチ/ロイ,Female,Dual Sum-7s,143,??,cnsp_img61
+65,Sixfivie,APHR-NT V+VI.B,ロクゴ,Female,Dual Sum-11s,135,10,cnsp_img65
+66,Sixis,APHR-NT VI+[R]VI,ムロク,Female,Master Tales 9,154,16,cnsp_img66
+68,Siceighns,APHR-NT VI+VIII.A,ロクヤ,Neutral,Dual Sum-5s,147,14,cnsp_img68
+69,Signine,APHR-NT VI+IX,ロック,Male,Dual Sum-6s,156,20?,cnsp_img69
+70,Seventia,APHR-NT [R]VII,ナナト,Male,Tens-Digits,159,17,cnsp_img70
+72,Sevtwína,APHR-NT II+VII.R,ナフタ,Neutral,Nines Duals,162,17,cnsp_img72
+74,Sefoury,APHR-NT IV+VII.B,ナナヨ,Female,Dual Sum-11s,148,17,cnsp_img74
+75,Sefievn,APHR-NT V+VII.B,シチゴ,Neutral,Dual Sum-3s,152,17,cnsp_img75
+77,Sefvens,APHR-NT VII+[R]VII,ナヅナ,Neutral,Master Tales 9,147,14?,cnsp_img77
+81,Eightone,APHR-NT I+VIII.B,ヤイチ,Neutral,Nines Duals,149,18,cnsp_img81
+88,Infinights,APHR-NT VIII+[R]VIII,ヤソハチ,Male,Master Tales 9,167,24,cnsp_img88
+89,Eightine,APHR-NT VIII+IX.A,ヤスモ,Female,Dual Sum-8s,158,21,cnsp_img89
+93,Nintris,APHR-NT III+IX.B,クミ,Female,Dual Sum-3s,144,15,cnsp_img93
+94,Ninfors,APHR-NT IV+IX.B,ツクシ,Neutral,Dual Sum-4s,145,13?,cnsp_img94
+96,Rota,APHR-NT VI+IX.INV,クルリ,Female,Dual Sum-6s,153,??,cnsp_img96
+99,Thukumo,APHR-NT [RX]IX,ツクモ,Neutral,Master Tales 9,159,16,cnsp_img99
+223,Twitwenthir,APHR-NTs #223,ツヅサ,Neutral,Duet Triples VII.A,151,15,cnsp-odr_img223
+0,Thouser,APHR-NT 0,チトセ,Neutral,for Consulting Assistant,165,25,cnsp_img000

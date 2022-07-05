@@ -14,6 +14,10 @@ public class CharacterAssetsDB : MonoBehaviour
         public string name;
         public string name_1;
         public string name_jp;
+        public string gender;
+        public string classname;
+        public int height;
+        public string age;
         public Sprite image;
     }
 
@@ -37,7 +41,7 @@ public class CharacterAssetsDB : MonoBehaviour
     Image characterImage;
 
     [SerializeField]
-    Text numText, nameText, name1Text, nameJpText, clockText;
+    Text numText, nameText, name1Text, nameJpText, genderText, classnameText, heightText, ageText, clockText;
 
     DateTime nowDateTime;
 
@@ -73,7 +77,9 @@ public class CharacterAssetsDB : MonoBehaviour
 
         foreach (CADB i in cADBs)
         {
-            string _buff = i.number.ToString() + "," + i.name + "," + i.name_1 + "," + i.name_jp + ",";
+            string _buff = i.number.ToString() + "," + i.name + "," + i.name_1 + "," + i.name_jp + ","
+                + i.gender + "," + i.classname + "," + i.height.ToString() + "," + i.age + ","
+                + i.image.name;
             sw.WriteLine(_buff);
         }
 
@@ -105,6 +111,12 @@ public class CharacterAssetsDB : MonoBehaviour
             _data.name = i[1];
             _data.name_1 = i[2];
             _data.name_jp = i[3];
+            _data.gender = i[4];
+            _data.classname = i[5];
+            _data.height = int.Parse(i[6]);
+            _data.age = i[7];
+            string _imagePath = "Images/" + i[8];
+            _data.image = Resources.Load<Sprite>(_imagePath);
             loadedCADBs.Add(_data);
         }
 
@@ -157,10 +169,7 @@ public class CharacterAssetsDB : MonoBehaviour
     {
         yield return StartCoroutine(FadeOutCADB());
         ChangeCA(isRandom);
-        characterImage.sprite = nowCADB.image;
-        nameText.text = nowCADB.name;
-        name1Text.text = nowCADB.name_1;
-        nameJpText.text = nowCADB.name_jp;
+        SetOtherTextsFromCADB();
         while (alphaAnim < 1f)
         {
             numAnim = nowCADB.number - Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - alphaAnim, acceralation));
@@ -179,6 +188,19 @@ public class CharacterAssetsDB : MonoBehaviour
     {
         characterImage.color = new Color(1f, 1f, 1f, alphaAnim);
         numText.color = nameText.color = name1Text.color = nameJpText.color
+            = genderText.color = classnameText.color = heightText.color = ageText.color
             = new Color(textColor.r, textColor.g, textColor.b, alphaAnim);
+    }
+
+    void SetOtherTextsFromCADB()
+    {
+        characterImage.sprite = nowCADB.image;
+        nameText.text = nowCADB.name;
+        name1Text.text = nowCADB.name_1;
+        nameJpText.text = nowCADB.name_jp;
+        genderText.text = "Gender: " + nowCADB.gender;
+        classnameText.text = "Class: " + nowCADB.classname;
+        heightText.text = "Height: " + nowCADB.height.ToString() + "cm";
+        ageText.text = "Consept Age: " + nowCADB.age;
     }
 }
