@@ -51,6 +51,8 @@ public class CharacterAssetsDB : MonoBehaviour
     [SerializeField]
     bool isSaveCADB2CSV = false, isLoadCSV2CADB = false;
 
+    bool isAnimating = true;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -66,8 +68,10 @@ public class CharacterAssetsDB : MonoBehaviour
         if(nowDateTime.Minute != DateTime.Now.Minute)
         {
             SetNowDateTime();
-            StartCoroutine(AnimateCADB(false));
+            StartCoroutine(AnimateCADB());
         }
+
+        if (Input.GetMouseButtonDown(0) && !isAnimating) StartCoroutine(AnimateCADB());
     }
 
     // https://qiita.com/mino4273/items/cf0b3bdbdb66b774ab23
@@ -165,10 +169,12 @@ public class CharacterAssetsDB : MonoBehaviour
         numText.text = ((nowCADB.number + numAnimDuration) % 1000).ToString("D3");
     }
 
-    IEnumerator AnimateCADB(bool isRandom)
+    IEnumerator AnimateCADB(bool onStarting = false)
     {
+        if (isAnimating && !onStarting) yield break;
+        isAnimating = true;
         yield return StartCoroutine(FadeOutCADB());
-        ChangeCA(isRandom);
+        ChangeCA(onStarting);
         SetOtherTextsFromCADB();
         while (alphaAnim < 1f)
         {
@@ -182,6 +188,7 @@ public class CharacterAssetsDB : MonoBehaviour
         alphaAnim = 1f;
         SetColorAlphaAnim();
         numText.text = nowCADB.number.ToString("D3");
+        isAnimating = false;
     }
 
     void SetColorAlphaAnim()
