@@ -506,6 +506,15 @@ MonoBehaviour:
     height: 161
     age: 17
     image: {fileID: 21300000, guid: 200bc9ca7301e494084648f7d93a8eb4, type: 3}
+  - number: 12
+    name: Twelva
+    name_1: APHR-NT I+II
+    name_jp: "\u30C8\u30A6\u30B8"
+    gender: Female
+    classname: Dual Sum-3s
+    height: 148
+    age: 14
+    image: {fileID: 21300000, guid: 22bd02b4b41388f40850c5566ef60766, type: 3}
   - number: 13
     name: Thirteena
     name_1: APHR-NT I+III.A
@@ -515,6 +524,24 @@ MonoBehaviour:
     height: 148
     age: 16
     image: {fileID: 21300000, guid: 96c133fe079c4dc41a765a231c66e06e, type: 3}
+  - number: 14
+    name: Forteels
+    name_1: APHR-NT I+IV.A
+    name_jp: "\u30C8\u30E8"
+    gender: Female
+    classname: Dual Sum-5s
+    height: 146
+    age: 16
+    image: {fileID: 21300000, guid: 9da2db308f4d57c41bb027d757b83d97, type: 3}
+  - number: 15
+    name: Fifteeld
+    name_1: APHR-NT I+V
+    name_jp: "\u30C8\u30A6\u30B4"
+    gender: Neutral
+    classname: Dual Sum-6s
+    height: 158
+    age: 18
+    image: {fileID: 21300000, guid: 1ec5825d1a84b44439268695439c7ffd, type: 3}
   - number: 16
     name: Sixteely
     name_1: APHR-NT I+VI.A
@@ -524,6 +551,15 @@ MonoBehaviour:
     height: 147
     age: 18?
     image: {fileID: 21300000, guid: 9a11ee192adfd054c8916b17a54be4b1, type: 3}
+  - number: 17
+    name: Seventeena
+    name_1: APHR-NT I+VII.A
+    name_jp: "\u30C8\u30CA"
+    gender: Female?
+    classname: Dual Sum-8s
+    height: 151
+    age: 22
+    image: {fileID: 21300000, guid: 1ff93fca9ab2e71429e0b6f8673003b9, type: 3}
   - number: 18
     name: Eighteeld
     name_1: APHR-NT I+VIII.A
@@ -882,7 +918,7 @@ MonoBehaviour:
   ageText: {fileID: 934427239}
   clockText: {fileID: 458145390}
   isSaveCADB2CSV: 0
-  isLoadCSV2CADB: 0
+  isLoadCSV2CADB: 1
 --- !u!1 &449713541
 GameObject:
   m_ObjectHideFlags: 0
