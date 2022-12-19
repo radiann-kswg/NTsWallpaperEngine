@@ -785,6 +785,15 @@ MonoBehaviour:
     height: 162
     age: 17
     image: {fileID: 21300000, guid: c03b48c0477c57b4eb328aa77732df4d, type: 3}
+  - number: 73
+    name: Sevthira
+    name_1: APHR-NT III+VII.B
+    name_jp: "\u30CA\u30C8\u30DF"
+    gender: Female
+    classname: Dual Carries
+    height: 154
+    age: 16?
+    image: {fileID: 21300000, guid: ccc83f4b9f75a80448f6909dd33984b5, type: 3}
   - number: 74
     name: Sefoury
     name_1: APHR-NT IV+VII.B
@@ -917,8 +926,8 @@ MonoBehaviour:
   heightText: {fileID: 1805317266}
   ageText: {fileID: 934427239}
   clockText: {fileID: 458145390}
-  isSaveCADB2CSV: 0
-  isLoadCSV2CADB: 1
+  isSaveCADB2CSV: 1
+  isLoadCSV2CADB: 0
 --- !u!1 &449713541
 GameObject:
   m_ObjectHideFlags: 0
