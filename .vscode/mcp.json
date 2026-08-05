@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "unity": {
+      "type": "stdio",
+      "command": "${env:USERPROFILE}\\.unity\\relay\\relay_win.exe",
+      "args": ["--mcp"]
+    }
+  }
+}
