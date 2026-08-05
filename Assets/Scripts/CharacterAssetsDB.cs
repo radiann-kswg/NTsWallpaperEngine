@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using System;
 using System.IO;
 
@@ -41,7 +42,7 @@ public class CharacterAssetsDB : MonoBehaviour
     Image characterImage;
 
     [SerializeField]
-    Text numText, nameText, name1Text, nameJpText, genderText, classnameText, heightText, ageText, clockText;
+    TMP_Text numText, nameText, name1Text, nameJpText, genderText, classnameText, heightText, ageText, clockText;
 
     DateTime nowDateTime;
 
@@ -97,15 +98,15 @@ public class CharacterAssetsDB : MonoBehaviour
         csvFile = Resources.Load("CADBs") as TextAsset;
         StringReader reader = new StringReader(csvFile.text);
 
-        // , ‚Å•ªŠ„‚µ‚Â‚Âˆês‚¸‚Â“Ç‚İ‚İ
-        // ƒŠƒXƒg‚É’Ç‰Á‚µ‚Ä‚¢‚­
-        while (reader.Peek() != -1) // reader.Peaek‚ª-1‚É‚È‚é‚Ü‚Å
+        // , ï¿½Å•ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â‚Âˆï¿½sï¿½ï¿½ï¿½Â“Ç‚İï¿½ï¿½ï¿½
+        // ï¿½ï¿½ï¿½Xï¿½gï¿½É’Ç‰ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½
+        while (reader.Peek() != -1) // reader.Peaekï¿½ï¿½-1ï¿½É‚È‚ï¿½Ü‚ï¿½
         {
-            string line = reader.ReadLine(); // ˆês‚¸‚Â“Ç‚İ‚İ
-            csvDatas.Add(line.Split(',')); // , ‹æØ‚è‚ÅƒŠƒXƒg‚É’Ç‰Á
+            string line = reader.ReadLine(); // ï¿½ï¿½sï¿½ï¿½ï¿½Â“Ç‚İï¿½ï¿½ï¿½
+            csvDatas.Add(line.Split(',')); // , ï¿½ï¿½Ø‚ï¿½Åƒï¿½ï¿½Xï¿½gï¿½É’Ç‰ï¿½
         }
 
-        // csvDatas[s][—ñ]‚ğw’è‚µ‚Ä’l‚ğ©—R‚Éæ‚èo‚¹‚é
+        // csvDatas[ï¿½s][ï¿½ï¿½]ï¿½ï¿½ï¿½wï¿½è‚µï¿½Ä’lï¿½ï¿½ï¿½ï¿½ï¿½Rï¿½Éï¿½ï¿½oï¿½ï¿½ï¿½ï¿½
         // Debug.Log(csvDatas[0][1]);
 
         loadedCADBs = new List<CADB>();
