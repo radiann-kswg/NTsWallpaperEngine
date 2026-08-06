@@ -22,9 +22,18 @@ namespace NTsWallpaperEngine.Signage
         [Tooltip("文字スクランブルがフェードインより先に確定する倍率")]
         [SerializeField] float textAnimSpeed = 1.35f;
 
+        public enum PlaybackMode
+        {
+            Random,      // ランダム再生（直前と同じ個体は連続しない）
+            Sequential,  // 番号順再生（Num昇順で巡回）
+        }
+
         [Header("Switching")]
         [Tooltip("切替間隔（秒）。秒針と同期し、30なら秒針00/30、20なら00/20/40ちょうどで切り替わる（60の約数推奨）")]
         [SerializeField] int switchIntervalSeconds = 30;
+        [Tooltip("再生モード（ランダム／番号順）。実行中は modeToggleKey か右クリックで切替")]
+        [SerializeField] PlaybackMode playbackMode = PlaybackMode.Random;
+        [SerializeField] KeyCode modeToggleKey = KeyCode.M;
 
         [Header("Daily DB reload (RPi常時稼働向け)")]
         [Tooltip("毎日この時刻(時)にDBを再読込する。OS側の日次pull（scripts/rpi/update-creationsdb.sh）とセットで運用")]
@@ -40,8 +49,9 @@ namespace NTsWallpaperEngine.Signage
         [SerializeField, Range(0f, 1f)] float glowAlpha = 0.5f;
 
         List<NtCharacterRecord> _records = new List<NtCharacterRecord>();
+        List<NtCharacterRecord> _sorted = new List<NtCharacterRecord>();  // 番号順再生用
         NtCharacterRecord _next;
-        int _lastIndex = -1;
+        int _lastIndex = -1;      // Random: _records / Sequential: _sorted のインデックス
         float _alpha;
         bool _isAnimating;
         long _lastSlot = -1;  // 壁時計同期用の秒スロット
@@ -53,6 +63,7 @@ namespace NTsWallpaperEngine.Signage
         void Start()
         {
             _records = CreationsDbLoader.LoadAll();
+            RebuildSortedList();
             _lastReloadDate = DateTime.Now.Date;
             SetupBackground();
             if (view) view.SetClock(DateTime.Now);
@@ -90,6 +101,10 @@ namespace NTsWallpaperEngine.Signage
             if (Input.GetMouseButtonDown(0) && !_isAnimating)
                 StartCoroutine(AnimateCard());
 
+            // 再生モード切替（Mキー or 右クリック）
+            if (Input.GetKeyDown(modeToggleKey) || Input.GetMouseButtonDown(1))
+                TogglePlaybackMode();
+
             // 日次リロード: OS側がpullした最新DBを毎日 dailyReloadHour 時に取り込む（常時稼働サイネージ向け）
             if (now.Date != _lastReloadDate && now.Hour >= dailyReloadHour && !_isAnimating)
             {
@@ -98,6 +113,7 @@ namespace NTsWallpaperEngine.Signage
                 if (reloaded.Count > 0)
                 {
                     _records = reloaded;
+                    RebuildSortedList();
                     _lastIndex = -1;
                     Debug.Log($"[Signage] 日次リロード完了: {reloaded.Count}件");
                 }
@@ -112,10 +128,40 @@ namespace NTsWallpaperEngine.Signage
         {
             if (_records.Count == 0) return null; // 同期直後など一時的に空のケースを防御
             if (_records.Count == 1) return _records[0];
+
+            if (playbackMode == PlaybackMode.Sequential)
+            {
+                _lastIndex = (_lastIndex + 1) % _sorted.Count;
+                return _sorted[_lastIndex];
+            }
+
             int index;
             do { index = _random.Next(_records.Count); } while (index == _lastIndex);
             _lastIndex = index;
             return _records[index];
+        }
+
+        void RebuildSortedList()
+        {
+            _sorted = new List<NtCharacterRecord>(_records);
+            _sorted.Sort((a, b) =>
+            {
+                int byNum = a.NumValue.CompareTo(b.NumValue);
+                return byNum != 0 ? byNum : string.CompareOrdinal(a.NumRaw, b.NumRaw);
+            });
+        }
+
+        void TogglePlaybackMode()
+        {
+            playbackMode = playbackMode == PlaybackMode.Random ? PlaybackMode.Sequential : PlaybackMode.Random;
+
+            // 番号順へ切り替えたら、現在表示中の個体から順番を継続する
+            if (playbackMode == PlaybackMode.Sequential && view && view.Current != null)
+                _lastIndex = _sorted.IndexOf(view.Current);
+            else
+                _lastIndex = -1;
+
+            Debug.Log($"[Signage] 再生モード: {playbackMode}");
         }
 
         IEnumerator AnimateCard(bool onStarting = false)

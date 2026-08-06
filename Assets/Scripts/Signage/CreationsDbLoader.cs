@@ -87,6 +87,9 @@ namespace NTsWallpaperEngine.Signage
 
             var classDict = LoadClassDictionary(root);
 
+            // パス1: 全DBを読み込み、(DB名, Num文字列) → レコード の索引を作る
+            var loaded = new List<(string dbKey, JArray array)>();
+            var index = new Dictionary<(string db, string num), JObject>();
             foreach (var (dbKey, jsonName) in Sources)
             {
                 string jsonPath = Path.Combine(root, "DataBases", jsonName);
@@ -107,6 +110,23 @@ namespace NTsWallpaperEngine.Signage
                     continue;
                 }
 
+                loaded.Add((dbKey, array));
+                string dbShort = dbKey.Replace("DB_", "");
+                foreach (var token in array)
+                    if (token is JObject obj)
+                        index[(dbShort, TokenToString(obj["Num"]))] = obj;
+            }
+
+            // パス2: SameModels_DBLink（$enrich: true）によるnullフィールドの継承
+            var enrichState = new Dictionary<JObject, int>(); // 0/未着手は不在, 1=処理中, 2=完了
+            foreach (var (_, array) in loaded)
+                foreach (var token in array)
+                    if (token is JObject obj)
+                        EnrichRecord(obj, index, enrichState);
+
+            // パス3: 表示対象の抽出
+            foreach (var (dbKey, array) in loaded)
+            {
                 foreach (var token in array)
                 {
                     if (token is not JObject obj) continue;
@@ -117,6 +137,53 @@ namespace NTsWallpaperEngine.Signage
 
             Debug.Log($"[Signage] 表示対象レコード: {results.Count}件 (root: {root})");
             return results;
+        }
+
+        // enrich対象外のフィールド（個体のアイデンティティおよびリンク系は継承しない）
+        static readonly HashSet<string> EnrichExcludedFields = new HashSet<string>
+        {
+            "Num", "Num_Badge", "Progress", "Images",
+        };
+
+        /// <summary>
+        /// SameModels_DBLink（db_type.json で $enrich: true 指定）のリンク先から、
+        /// null/未定義のフィールドを継承する。循環リンク（67⇔67-old等）は訪問状態で防御。
+        /// </summary>
+        static void EnrichRecord(JObject obj, Dictionary<(string db, string num), JObject> index,
+            Dictionary<JObject, int> state)
+        {
+            if (state.TryGetValue(obj, out int s) && s > 0) return; // 処理中 or 完了
+            state[obj] = 1;
+
+            if (obj["SameModels_DBLink"] is JArray links)
+            {
+                foreach (var linkToken in links)
+                {
+                    if (linkToken is not JObject link) continue;
+                    // 別作品（_Work指定ありかつNumberTales以外）へのリンクは対象外
+                    string work = (string)link["_Work"];
+                    if (!string.IsNullOrEmpty(work) && work != "NumberTales") continue;
+
+                    string db = (string)link["_DB"];
+                    string num = TokenToString(link["Num"]);
+                    if (string.IsNullOrEmpty(db) || !index.TryGetValue((db, num), out var target)) continue;
+
+                    // リンク先を先にenrichしてから継承（処理中なら現状値のまま利用）
+                    if (!state.TryGetValue(target, out int ts) || ts == 0)
+                        EnrichRecord(target, index, state);
+
+                    foreach (var prop in target.Properties())
+                    {
+                        if (EnrichExcludedFields.Contains(prop.Name)) continue;
+                        if (prop.Name.EndsWith("_DBLink")) continue;
+                        var local = obj[prop.Name];
+                        if (local == null || local.Type == JTokenType.Null)
+                            obj[prop.Name] = prop.Value.DeepClone();
+                    }
+                }
+            }
+
+            state[obj] = 2;
         }
 
         /// <summary>dict_Class.json（Class → Class_EN）を読み込む。無ければ空辞書。</summary>
