@@ -31,6 +31,7 @@ namespace NTsWallpaperEngine.Signage
         public List<string> ClassNames = new List<string>();  // 所属クラス（DB表記のまま）
         public int HeightCm;
         public string ConceptAge;
+        public string ConceptAgeAboutEN; // {value, about_EN} 形式の注記（無ければ空）
         public List<string> ImagePaths = new List<string>();  // corefolder画像の絶対パス
         public Color ThemeColor = new Color(0.72f, 0.85f, 0.90f);
         public bool HasThemeColor;
@@ -152,8 +153,18 @@ namespace NTsWallpaperEngine.Signage
                 ModelNameJP = (string)obj["ModelName_JP"],
                 ModelNameEN = (string)obj["ModelName_EN"],
                 GenderType = TokenToString(obj["GenderType"]),
-                ConceptAge = TokenToString(obj["ConceptAge"]),
             };
+            // ConceptAge は素の値 と {value, about_JP, about_EN} オブジェクトの両形式に対応
+            if (obj["ConceptAge"] is JObject ageObj)
+            {
+                record.ConceptAge = TokenToString(ageObj["value"]);
+                record.ConceptAgeAboutEN = TokenToString(ageObj["about_EN"]);
+            }
+            else
+            {
+                record.ConceptAge = TokenToString(obj["ConceptAge"]);
+                record.ConceptAgeAboutEN = "";
+            }
             record.NumValue = ExtractLeadingNumber(record.NumRaw);
             record.HeightCm = obj["Height_cm"]?.Type == JTokenType.Integer ? (int)obj["Height_cm"] : 0;
             if (obj["Class"] is JArray classes)

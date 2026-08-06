@@ -23,7 +23,7 @@ namespace NTsWallpaperEngine.Signage
         [Header("Character")]
         public RawImage characterImage;
         [Tooltip("コアフォルダ画像の一律縮小率（元画像はキャラ間でサイズ校正済みのため、全員同じ倍率で縮小して相対サイズを保持する）")]
-        [Range(0.1f, 2f)] public float characterScale = 0.98f;
+        [Range(0.1f, 2f)] public float characterScale = 0.92f;
 
         [Header("Big number (left)")]
         public TMP_Text bigNumberText;    // 例 "044"（旧シーン踏襲の大型番号・カウント演出対象）
@@ -34,7 +34,8 @@ namespace NTsWallpaperEngine.Signage
         public TMP_Text nameEnText;        // 例 "FOLFOURN"
 
         [Header("Profile (bottom-right)")]
-        public TMP_Text profileText;       // Gender / Class / Concept Age / 機体名EN（最下行）
+        public TMP_Text profileText;       // Gender / Class / Concept Age
+        public TMP_Text modelNameEnText;   // 機体名EN（プロフィール最下行・一回り大きいフォント）
 
         [Header("Clock (top-left)")]
         public TMP_Text clockText;
@@ -65,7 +66,7 @@ namespace NTsWallpaperEngine.Signage
         string _numBadgeDisplay = ""; // アニメ確定後の最終表記（例 "222A"）
 
         // 文字アニメーションの確定文字列（スクランブル対象）
-        string _targetModelNumber = "", _targetNameEn = "", _targetProfile = "";
+        string _targetModelNumber = "", _targetNameEn = "", _targetModelNameEn = "", _targetProfile = "";
         float _textProgress = 1f;
 
         public NtCharacterRecord Current => _current;
@@ -78,6 +79,7 @@ namespace NTsWallpaperEngine.Signage
             // 複数行の型番は1行に連結（表記は原文のまま・大文字化しない）
             _targetModelNumber = (record.ModelNumber ?? "").Replace("\r", "").Replace("\n", " / ");
             _targetNameEn = FormatNameEnMultiline(record.NameEN);
+            _targetModelNameEn = (record.ModelNameEN ?? "").Replace("\r", "").Replace("\n", " / ");
             _targetProfile = BuildProfile(record);
             // 正式名称は原文表記（小文字あり）のまま使用
             _formalTemplate = string.IsNullOrEmpty(record.FormalNameEN)
@@ -199,6 +201,7 @@ namespace NTsWallpaperEngine.Signage
             _textProgress = Mathf.Clamp01(progress);
             ApplyScramble(modelNumberText, _targetModelNumber, _textProgress);
             ApplyScramble(nameEnText, _targetNameEn, _textProgress);
+            ApplyScramble(modelNameEnText, _targetModelNameEn, _textProgress);
             ApplyScrambleValues(profileText, _targetProfile, _textProgress);
         }
 
@@ -231,19 +234,47 @@ namespace NTsWallpaperEngine.Signage
             text.text = sb.ToString();
         }
 
+        /// <summary>
+        /// リッチテキストタグ対応のスクランブル追記。&lt;size&gt;等のタグはそのまま透過し、
+        /// 可視文字だけを進行度に応じて左から確定させる。
+        /// </summary>
         static void AppendScrambled(StringBuilder sb, string target, float progress)
         {
-            int revealed = Mathf.FloorToInt(target.Length * progress);
-            sb.Append(target, 0, revealed);
-            for (int i = revealed; i < target.Length; i++)
+            // タグを除いた可視文字数を数える
+            int visibleCount = 0;
+            for (int i = 0; i < target.Length; i++)
+            {
+                if (target[i] == '<')
+                {
+                    int close = target.IndexOf('>', i);
+                    if (close >= 0) { i = close; continue; }
+                }
+                visibleCount++;
+            }
+
+            int revealed = Mathf.FloorToInt(visibleCount * progress);
+            int visibleIndex = 0;
+            for (int i = 0; i < target.Length; i++)
             {
                 char c = target[i];
-                if (char.IsWhiteSpace(c)) sb.Append(c);
+                if (c == '<')
+                {
+                    int close = target.IndexOf('>', i);
+                    if (close >= 0)
+                    {
+                        sb.Append(target, i, close - i + 1); // タグはそのまま
+                        i = close;
+                        continue;
+                    }
+                }
+
+                if (visibleIndex < revealed || char.IsWhiteSpace(c)) sb.Append(c);
                 else sb.Append(ScramblePool[Random.Range(0, ScramblePool.Length)]);
+                visibleIndex++;
             }
         }
 
-        /// <summary>プロフィール文字列を組み立てる（Heightは表示しない）。最下行に英語機体名。値が無い行は省略。</summary>
+        /// <summary>プロフィール文字列を組み立てる（Heightは表示しない。機体名ENは別要素 modelNameEnText 側）。</summary>
         static string BuildProfile(NtCharacterRecord record)
         {
             var sb = new StringBuilder();
@@ -252,9 +283,12 @@ namespace NTsWallpaperEngine.Signage
             if (record.ClassNames.Count > 0)
                 sb.Append("Class: ").Append(string.Join(", ", record.ClassNames)).Append('\n');
             if (!string.IsNullOrEmpty(record.ConceptAge))
-                sb.Append("Concept Age: ").Append(record.ConceptAge).Append('\n');
-            if (!string.IsNullOrEmpty(record.ModelNameEN))
-                sb.Append(record.ModelNameEN.Replace("\r", "").Replace("\n", " / "));
+            {
+                sb.Append("Concept Age: ").Append(record.ConceptAge);
+                // {value, about_EN} 形式の注記は半角括弧＋小さめ表示で追記
+                if (!string.IsNullOrEmpty(record.ConceptAgeAboutEN))
+                    sb.Append(" <size=70%>(").Append(record.ConceptAgeAboutEN).Append(")</size>");
+            }
             return sb.ToString().TrimEnd('\n');
         }
 
@@ -287,6 +321,7 @@ namespace NTsWallpaperEngine.Signage
             ApplyAlpha(modelNumberText, headerColor, alpha);
             ApplyAlpha(formalNameText, headerColor, alpha);
             ApplyAlpha(nameEnText, headerColor, alpha);
+            ApplyAlpha(modelNameEnText, footerColor, alpha);
             ApplyAlpha(profileText, footerColor, alpha);
         }
 
@@ -296,13 +331,19 @@ namespace NTsWallpaperEngine.Signage
             text.color = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * alpha);
         }
 
-        /// <summary>時計表示。「:」は0.5秒周期で点滅（非表示時も透明表示で幅を保持し、桁ズレを防ぐ）。</summary>
+        /// <summary>
+        /// 時計表示。「:」は0.5秒周期で点滅（非表示時も透明表示で幅を保持し、桁ズレを防ぐ）。
+        /// 時分の後ろに小さく秒、下段に小さく日付（英語曜日）を表示する。
+        /// </summary>
         public void SetClock(System.DateTime now)
         {
             if (!clockText) return;
             bool colonVisible = now.Millisecond < 500;
             string colon = colonVisible ? ":" : "<alpha=#00>:<alpha=#FF>";
-            clockText.text = $"{now.Hour:D2}{colon}{now.Minute:D2}";
+            string date = now.ToString("yyyy/MM/dd ddd", System.Globalization.CultureInfo.InvariantCulture);
+            clockText.text =
+                $"{now.Hour:D2}{colon}{now.Minute:D2}<size=50%> {now.Second:D2}</size>\n" +
+                $"<size=45%>{date}</size>";
         }
 
         // ---- 表記整形 ----
