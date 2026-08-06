@@ -23,10 +23,8 @@ namespace NTsWallpaperEngine.Signage
         [SerializeField] float textAnimSpeed = 1.35f;
 
         [Header("Switching")]
-        [Tooltip("分の変化ごとに切り替える（falseなら秒間隔切替）")]
-        [SerializeField] bool switchEveryMinute = false;
-        [Tooltip("switchEveryMinute=false のときの切替間隔（秒）。20〜30秒推奨")]
-        [SerializeField] float switchIntervalSeconds = 30f;
+        [Tooltip("切替間隔（秒）。秒針と同期し、30なら秒針00/30、20なら00/20/40ちょうどで切り替わる（60の約数推奨）")]
+        [SerializeField] int switchIntervalSeconds = 30;
 
         [Header("Background design")]
         [Tooltip("ドット1周期のピクセル数（生成テクスチャ内）")]
@@ -42,8 +40,7 @@ namespace NTsWallpaperEngine.Signage
         int _lastIndex = -1;
         float _alpha;
         bool _isAnimating;
-        float _switchTimer;
-        DateTime _nowDateTime;
+        long _lastSlot = -1;  // 壁時計同期用の秒スロット
         Texture2D _dotTexture, _gradientTexture, _glowTexture;
 
         System.Random _random = new System.Random();
@@ -52,7 +49,7 @@ namespace NTsWallpaperEngine.Signage
         {
             _records = CreationsDbLoader.LoadAll();
             SetupBackground();
-            SetNowDateTime();
+            if (view) view.SetClock(DateTime.Now);
 
             if (_records.Count == 0)
             {
@@ -65,34 +62,27 @@ namespace NTsWallpaperEngine.Signage
 
         void Update()
         {
-            // 時計は毎フレーム更新（「:」の点滅のため）
-            if (view) view.SetClock(DateTime.Now);
+            var now = DateTime.Now;
 
-            if (_nowDateTime.Minute != DateTime.Now.Minute)
+            // 時計は毎フレーム更新（「:」の点滅・秒表示のため）
+            if (view) view.SetClock(now);
+
+            // 秒針同期の切替: 実時刻を間隔で割ったスロット境界（00/20/40 や 00/30）で発火
+            int interval = Mathf.Max(5, switchIntervalSeconds);
+            long slot = (long)now.TimeOfDay.TotalSeconds / interval;
+            if (_lastSlot < 0)
             {
-                SetNowDateTime();
-                if (switchEveryMinute && !_isAnimating) StartCoroutine(AnimateCard());
+                _lastSlot = slot; // 起動直後の即切替を防止（次の境界から同期開始）
             }
-
-            if (!switchEveryMinute)
+            else if (slot != _lastSlot)
             {
-                _switchTimer += Time.deltaTime;
-                if (_switchTimer >= switchIntervalSeconds && !_isAnimating)
-                {
-                    _switchTimer = 0f;
-                    StartCoroutine(AnimateCard());
-                }
+                _lastSlot = slot; // アニメ中に境界を跨いだ場合はその回をスキップ（次の境界で再同期）
+                if (!_isAnimating) StartCoroutine(AnimateCard());
             }
 
             // クリック/タップでも切り替え（旧実装踏襲）
             if (Input.GetMouseButtonDown(0) && !_isAnimating)
                 StartCoroutine(AnimateCard());
-        }
-
-        void SetNowDateTime()
-        {
-            _nowDateTime = DateTime.Now;
-            if (view) view.SetClock(_nowDateTime);
         }
 
         NtCharacterRecord PickNextRecord()
