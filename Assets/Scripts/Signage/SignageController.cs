@@ -145,6 +145,7 @@ namespace NTsWallpaperEngine.Signage
             }
             _alpha = 1f;
             view.SetAnimatedNumber(target);
+            view.SetNumberFinal(); // バッジ表記（例 "222A"）へ着地
             view.SetTextProgress(1f);
             view.SetAlpha(1f);
             _isAnimating = false;

@@ -65,6 +65,7 @@ namespace NTsWallpaperEngine.Signage
         int _numDigits = 2;
         bool _numericNum = true;     // Numが数字を持つか（%や∞などの特殊個体はfalse）
         string _rawNumDisplay = "";  // 非数値個体の表示用
+        string _numBadgeDisplay = ""; // アニメ確定後の最終表記（例 "222A"）
 
         // 文字アニメーションの確定文字列（スクランブル対象）
         string _targetModelNumber = "", _targetNameEn = "", _targetModelNameEn = "", _targetProfile = "";
@@ -90,6 +91,10 @@ namespace NTsWallpaperEngine.Signage
             _numericNum = numMatch.Success;
             _rawNumDisplay = record.NumRaw ?? "";
             _numDigits = _numericNum ? numMatch.Value.Length : 1;
+            // 最終表記はバッジ優先（"222A"/"67B" のようなサフィックス付き個体を区別して着地させる）
+            _numBadgeDisplay = !string.IsNullOrEmpty(record.NumBadge)
+                ? record.NumBadge
+                : (_numericNum ? numMatch.Value : _rawNumDisplay);
 
             SetTexture(texture);
             SetAnimatedNumber(record.NumValue);
@@ -167,6 +172,13 @@ namespace NTsWallpaperEngine.Signage
                     ? NumTokenRegex.Replace(_formalTemplate, "#" + digits, 1)
                     : $"{_formalTemplate} #{digits}";
             }
+        }
+
+        /// <summary>カウント演出の確定後に呼ぶ。大型番号をバッジ表記（例 "222A"）で着地させる。</summary>
+        public void SetNumberFinal()
+        {
+            if (bigNumberText && !string.IsNullOrEmpty(_numBadgeDisplay))
+                bigNumberText.text = _numBadgeDisplay;
         }
 
         /// <summary>
