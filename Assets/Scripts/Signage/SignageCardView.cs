@@ -313,16 +313,8 @@ namespace NTsWallpaperEngine.Signage
             if (string.IsNullOrEmpty(target)) { text.text = ""; return; }
             if (progress >= 1f) { text.text = target; return; }
 
-            int revealed = Mathf.FloorToInt(target.Length * progress);
             var sb = new StringBuilder(target.Length);
-            sb.Append(target, 0, revealed);
-            for (int i = revealed; i < target.Length; i++)
-            {
-                char c = target[i];
-                // 空白・記号の位置はそのまま残すと単語の輪郭が見えて読みやすい
-                if (char.IsWhiteSpace(c)) sb.Append(c);
-                else sb.Append(ScramblePool[Random.Range(0, ScramblePool.Length)]);
-            }
+            AppendScrambled(sb, target, progress); // リッチテキストタグ対応
             text.text = sb.ToString();
         }
 
@@ -367,29 +359,24 @@ namespace NTsWallpaperEngine.Signage
 
         // ---- 表記整形 ----
 
-        /// <summary>複数行の Name_EN を行ごとに整形して連結（例 "222(Doppels)\n222(Doppelgans)" → "DOPPELS\nDOPPELGANS"）。</summary>
+        /// <summary>
+        /// Name_EN を全文表示用に整形する。数字有り/無しの名前をそのまま保持し、
+        /// 改行区切りの2つ目以降の名前は小さめ（70%）で表示する。
+        /// 例: "Binor\n2(Twicy)" → "Binor\n&lt;size=70%&gt;2(Twicy)&lt;/size&gt;"
+        /// </summary>
         static string FormatNameEnMultiline(string nameEn)
         {
             if (string.IsNullOrEmpty(nameEn)) return "";
             var lines = nameEn.Replace("\r", "").Split('\n');
-            for (int i = 0; i < lines.Length; i++) lines[i] = FormatNameEn(lines[i]);
-            return string.Join("\n", lines);
-        }
-
-        /// <summary>"44(Folfourn)" → "Folfourn" ／ "Binor (Twicy)" → "Binor(Twicy)"（原文の大文字小文字を保持）</summary>
-        static string FormatNameEn(string nameEn)
-        {
-            if (string.IsNullOrEmpty(nameEn)) return "";
-            var m = Regex.Match(nameEn, @"^\s*(?<head>[^(（]*?)\s*[（(]\s*(?<inner>.+?)\s*[)）]\s*$");
-            if (m.Success)
+            var sb = new StringBuilder();
+            for (int i = 0; i < lines.Length; i++)
             {
-                string head = m.Groups["head"].Value.Trim();
-                string inner = m.Groups["inner"].Value.Trim();
-                if (Regex.IsMatch(head, @"^[\d\-]*$"))
-                    return inner;
-                return $"{head}({inner})";
+                string line = lines[i].Trim();
+                if (line.Length == 0) continue;
+                if (sb.Length == 0) sb.Append(line);
+                else sb.Append("\n<size=70%>").Append(line).Append("</size>");
             }
-            return nameEn.Trim();
+            return sb.ToString();
         }
     }
 }
