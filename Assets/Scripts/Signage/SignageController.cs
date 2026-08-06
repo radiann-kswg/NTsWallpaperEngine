@@ -23,10 +23,10 @@ namespace NTsWallpaperEngine.Signage
         [SerializeField] float textAnimSpeed = 1.35f;
 
         [Header("Switching")]
-        [Tooltip("分の変化ごとに切り替える（サイネージ既定）")]
-        [SerializeField] bool switchEveryMinute = true;
-        [Tooltip("switchEveryMinute=false のときの切替間隔（秒）")]
-        [SerializeField] float switchIntervalSeconds = 60f;
+        [Tooltip("分の変化ごとに切り替える（falseなら秒間隔切替）")]
+        [SerializeField] bool switchEveryMinute = false;
+        [Tooltip("switchEveryMinute=false のときの切替間隔（秒）。20〜30秒推奨")]
+        [SerializeField] float switchIntervalSeconds = 30f;
 
         [Header("Background design")]
         [Tooltip("ドット1周期のピクセル数（生成テクスチャ内）")]
@@ -97,6 +97,7 @@ namespace NTsWallpaperEngine.Signage
 
         NtCharacterRecord PickNextRecord()
         {
+            if (_records.Count == 0) return null; // 同期直後など一時的に空のケースを防御
             if (_records.Count == 1) return _records[0];
             int index;
             do { index = _random.Next(_records.Count); } while (index == _lastIndex);
@@ -127,6 +128,7 @@ namespace NTsWallpaperEngine.Signage
 
             // 次レコードの決定・画像読込（バリアントはランダム）
             _next = PickNextRecord();
+            if (_next == null) { _isAnimating = false; yield break; }
             string imagePath = _next.ImagePaths[_random.Next(_next.ImagePaths.Count)];
             Texture2D texture = CreationsDbLoader.LoadTexture(imagePath);
             view.Apply(_next, texture);

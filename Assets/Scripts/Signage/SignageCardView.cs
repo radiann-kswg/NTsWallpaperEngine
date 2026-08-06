@@ -23,7 +23,7 @@ namespace NTsWallpaperEngine.Signage
         [Header("Character")]
         public RawImage characterImage;
         [Tooltip("コアフォルダ画像の一律縮小率（元画像はキャラ間でサイズ校正済みのため、全員同じ倍率で縮小して相対サイズを保持する）")]
-        [Range(0.1f, 2f)] public float characterScale = 0.78f;
+        [Range(0.1f, 2f)] public float characterScale = 0.98f;
 
         [Header("Big number (left)")]
         public TMP_Text bigNumberText;    // 例 "044"（旧シーン踏襲の大型番号・カウント演出対象）
@@ -33,11 +33,8 @@ namespace NTsWallpaperEngine.Signage
         public TMP_Text formalNameText;    // 例 "NUMBERTALES #044"（#部分が数字アニメ対象）
         public TMP_Text nameEnText;        // 例 "FOLFOURN"
 
-        [Header("Footer (bottom-left)")]
-        public TMP_Text modelNameEnText;   // 例 "NumberTales' Regular+Improved Mk.4 (Mk.44)"
-
-        [Header("Profile (bottom-right, 既存シーン準拠)")]
-        public TMP_Text profileText;       // Gender / Class / Height / Concept Age
+        [Header("Profile (bottom-right)")]
+        public TMP_Text profileText;       // Gender / Class / Concept Age / 機体名EN（最下行）
 
         [Header("Clock (top-left)")]
         public TMP_Text clockText;
@@ -68,7 +65,7 @@ namespace NTsWallpaperEngine.Signage
         string _numBadgeDisplay = ""; // アニメ確定後の最終表記（例 "222A"）
 
         // 文字アニメーションの確定文字列（スクランブル対象）
-        string _targetModelNumber = "", _targetNameEn = "", _targetModelNameEn = "", _targetProfile = "";
+        string _targetModelNumber = "", _targetNameEn = "", _targetProfile = "";
         float _textProgress = 1f;
 
         public NtCharacterRecord Current => _current;
@@ -78,14 +75,14 @@ namespace NTsWallpaperEngine.Signage
         {
             _current = record;
 
-            // 複数行の型番は1行に連結（大型番号との重なり防止）
+            // 複数行の型番は1行に連結（表記は原文のまま・大文字化しない）
             _targetModelNumber = (record.ModelNumber ?? "").Replace("\r", "").Replace("\n", " / ");
             _targetNameEn = FormatNameEnMultiline(record.NameEN);
-            _targetModelNameEn = record.ModelNameEN ?? "";
             _targetProfile = BuildProfile(record);
+            // 正式名称は原文表記（小文字あり）のまま使用
             _formalTemplate = string.IsNullOrEmpty(record.FormalNameEN)
-                ? "NUMBERTALES"
-                : record.FormalNameEN.Replace("\r", "").Replace("\n", " ").Trim().ToUpperInvariant();
+                ? "NumberTales"
+                : record.FormalNameEN.Replace("\r", "").Replace("\n", " ").Trim();
             // Numの先頭数字のみを表示（"2-alt"→2, "10-alt"→10, "222-mp"→222 のようにsuffixは除去）
             var numMatch = Regex.Match(record.NumRaw ?? "", @"^\d+");
             _numericNum = numMatch.Success;
@@ -202,7 +199,6 @@ namespace NTsWallpaperEngine.Signage
             _textProgress = Mathf.Clamp01(progress);
             ApplyScramble(modelNumberText, _targetModelNumber, _textProgress);
             ApplyScramble(nameEnText, _targetNameEn, _textProgress);
-            ApplyScramble(modelNameEnText, _targetModelNameEn, _textProgress);
             ApplyScrambleValues(profileText, _targetProfile, _textProgress);
         }
 
@@ -247,7 +243,7 @@ namespace NTsWallpaperEngine.Signage
             }
         }
 
-        /// <summary>既存シーン（旧CharacterAssetsDB）準拠のプロフィール文字列を組み立てる。値が無い行は省略。</summary>
+        /// <summary>プロフィール文字列を組み立てる（Heightは表示しない）。最下行に英語機体名。値が無い行は省略。</summary>
         static string BuildProfile(NtCharacterRecord record)
         {
             var sb = new StringBuilder();
@@ -255,10 +251,10 @@ namespace NTsWallpaperEngine.Signage
                 sb.Append("Gender: ").Append(record.GenderType).Append('\n');
             if (record.ClassNames.Count > 0)
                 sb.Append("Class: ").Append(string.Join(", ", record.ClassNames)).Append('\n');
-            if (record.HeightCm > 0)
-                sb.Append("Height: ").Append(record.HeightCm).Append("cm\n");
             if (!string.IsNullOrEmpty(record.ConceptAge))
-                sb.Append("Concept Age: ").Append(record.ConceptAge);
+                sb.Append("Concept Age: ").Append(record.ConceptAge).Append('\n');
+            if (!string.IsNullOrEmpty(record.ModelNameEN))
+                sb.Append(record.ModelNameEN.Replace("\r", "").Replace("\n", " / "));
             return sb.ToString().TrimEnd('\n');
         }
 
@@ -291,7 +287,6 @@ namespace NTsWallpaperEngine.Signage
             ApplyAlpha(modelNumberText, headerColor, alpha);
             ApplyAlpha(formalNameText, headerColor, alpha);
             ApplyAlpha(nameEnText, headerColor, alpha);
-            ApplyAlpha(modelNameEnText, footerColor, alpha);
             ApplyAlpha(profileText, footerColor, alpha);
         }
 

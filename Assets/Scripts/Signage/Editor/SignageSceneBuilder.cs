@@ -83,9 +83,9 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             var glowGo = new GameObject("CharacterGlow", typeof(RectTransform), typeof(RawImage));
             var glowRect = (RectTransform)glowGo.transform;
             glowRect.SetParent(canvasGo.transform, false);
-            glowRect.anchorMin = glowRect.anchorMax = new Vector2(0.45f, 0.47f);
+            glowRect.anchorMin = glowRect.anchorMax = new Vector2(0.40f, 0.52f);
             glowRect.anchoredPosition = Vector2.zero;
-            glowRect.sizeDelta = new Vector2(420f, 420f);
+            glowRect.sizeDelta = new Vector2(520f, 520f);
             var glow = glowGo.GetComponent<RawImage>();
             glow.raycastTarget = false;
 
@@ -93,7 +93,7 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             var charGo = new GameObject("CharacterImage", typeof(RectTransform), typeof(RawImage));
             var charRect = (RectTransform)charGo.transform;
             charRect.SetParent(canvasGo.transform, false);
-            charRect.anchorMin = charRect.anchorMax = new Vector2(0.45f, 0.47f);
+            charRect.anchorMin = charRect.anchorMax = new Vector2(0.40f, 0.52f);
             charRect.anchoredPosition = Vector2.zero;
             charRect.sizeDelta = new Vector2(280f, 205f);
             var charImage = charGo.GetComponent<RawImage>();
@@ -108,19 +108,14 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             var nameEn = CreateText(canvasGo.transform, "NameEnText", penchant, 59f,
                 TextAlignmentOptions.TopRight, new Vector2(1f, 1f), new Vector2(-24f, -143f), new Vector2(800f, 145f));
 
-            // --- Big number (左下・機体名の真上・透かし風カウント演出) ---
-            var bigNumber = CreateText(canvasGo.transform, "BigNumberText", penchant, 150f,
-                TextAlignmentOptions.BottomLeft, new Vector2(0f, 0f), new Vector2(24f, 92f), new Vector2(450f, 165f));
+            // --- Big number (画面左下隅に密着・1.5倍・透かし風カウント演出) ---
+            var bigNumber = CreateText(canvasGo.transform, "BigNumberText", penchant, 225f,
+                TextAlignmentOptions.BottomLeft, new Vector2(0f, 0f), new Vector2(16f, 4f), new Vector2(650f, 245f));
 
-            // --- Profile (右下・旧シーン準拠) ---
+            // --- Profile (右下: Gender / Class / Concept Age / 最下行=英語機体名) ---
             var profile = CreateText(canvasGo.transform, "ProfileText", penchant, 23f,
-                TextAlignmentOptions.BottomRight, new Vector2(1f, 0f), new Vector2(-24f, 24f), new Vector2(550f, 140f));
+                TextAlignmentOptions.BottomRight, new Vector2(1f, 0f), new Vector2(-24f, 24f), new Vector2(700f, 170f));
             profile.lineSpacing = 12f;
-
-            // --- Footer (左下: 英語機体名・複数行対応) ---
-            var modelNameEn = CreateText(canvasGo.transform, "ModelNameEnText", penchant, 25f,
-                TextAlignmentOptions.BottomLeft, new Vector2(0f, 0f), new Vector2(24f, 24f), new Vector2(650f, 65f));
-            modelNameEn.textWrappingMode = TextWrappingModes.Normal;
 
             // --- Clock (左上) ---
             var clock = CreateText(canvasGo.transform, "ClockText", penchant, 42f,
@@ -135,12 +130,11 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             view.dotsOverlay = dots;
             view.characterGlow = glow;
             view.characterImage = charImage;
-            view.characterScale = 0.78f; // 960x540基準（1920換算で約1.56相当・余白圧縮）
+            view.characterScale = 0.98f; // 960x540基準・1.25倍拡大版
             view.bigNumberText = bigNumber;
             view.modelNumberText = modelNumber;
             view.formalNameText = formalName;
             view.nameEnText = nameEn;
-            view.modelNameEnText = modelNameEn;
             view.profileText = profile;
             view.clockText = clock;
 
