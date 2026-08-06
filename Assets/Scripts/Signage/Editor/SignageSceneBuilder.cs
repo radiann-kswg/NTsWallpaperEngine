@@ -114,7 +114,7 @@ namespace NTsWallpaperEngine.Signage.EditorTools
 
             // --- Profile (右下: Gender / Class / Concept Age ＋ 最下行に一回り大きい英語機体名) ---
             var profile = CreateText(canvasGo.transform, "ProfileText", penchant, 23f,
-                TextAlignmentOptions.BottomRight, new Vector2(1f, 0f), new Vector2(-24f, 64f), new Vector2(700f, 110f));
+                TextAlignmentOptions.BottomRight, new Vector2(1f, 0f), new Vector2(-24f, 64f), new Vector2(700f, 240f));
             profile.lineSpacing = 12f;
             var modelNameEn = CreateText(canvasGo.transform, "ModelNameEnText", penchant, 30f,
                 TextAlignmentOptions.BottomRight, new Vector2(1f, 0f), new Vector2(-24f, 24f), new Vector2(800f, 40f));

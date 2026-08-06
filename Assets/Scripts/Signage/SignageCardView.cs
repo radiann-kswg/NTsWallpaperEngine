@@ -274,14 +274,20 @@ namespace NTsWallpaperEngine.Signage
             }
         }
 
-        /// <summary>プロフィール文字列を組み立てる（Heightは表示しない。機体名ENは別要素 modelNameEnText 側）。</summary>
+        /// <summary>
+        /// プロフィール文字列を組み立てる（Heightは表示しない。機体名ENは別要素 modelNameEnText 側）。
+        /// Class はブロック先頭で1要素1行（2行目以降はラベルなしの値のみ）。
+        /// </summary>
         static string BuildProfile(NtCharacterRecord record)
         {
             var sb = new StringBuilder();
+            for (int i = 0; i < record.ClassNames.Count; i++)
+            {
+                if (i == 0) sb.Append("Class: ");
+                sb.Append(record.ClassNames[i]).Append('\n');
+            }
             if (!string.IsNullOrEmpty(record.GenderType))
                 sb.Append("Gender: ").Append(record.GenderType).Append('\n');
-            if (record.ClassNames.Count > 0)
-                sb.Append("Class: ").Append(string.Join(", ", record.ClassNames)).Append('\n');
             if (!string.IsNullOrEmpty(record.ConceptAge))
             {
                 sb.Append("Concept Age: ").Append(record.ConceptAge);
