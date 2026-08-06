@@ -48,9 +48,21 @@ namespace NTsWallpaperEngine.Signage
 
         public const string SubmoduleRelativeRoot = "100BeautiesLab_CreationsDB/data/Works_NumberTales";
 
-        /// <summary>データルート（DataBases/ と Images/ を含むフォルダ）を解決する。</summary>
+        /// <summary>外部データパス指定用の環境変数（RPi運用時にOS側の日次pull先を指す）。</summary>
+        public const string ExternalRootEnvVar = "NTSWE_CREATIONSDB";
+
+        /// <summary>
+        /// データルート（DataBases/ と Images/ を含むフォルダ）を解決する。優先順:
+        ///   1. 環境変数 NTSWE_CREATIONSDB（RPi等でOS側が日次pullするDBリポジトリ内の Works_NumberTales を指定）
+        ///   2. StreamingAssets/CreationsDB（ビルド時同期分）
+        ///   3. サブモジュール直読み（エディタ/開発時フォールバック）
+        /// </summary>
         public static string ResolveDataRoot()
         {
+            string external = Environment.GetEnvironmentVariable(ExternalRootEnvVar);
+            if (!string.IsNullOrEmpty(external) && Directory.Exists(Path.Combine(external, "DataBases")))
+                return external;
+
             string streaming = Path.Combine(Application.streamingAssetsPath, "CreationsDB");
             if (Directory.Exists(Path.Combine(streaming, "DataBases")))
                 return streaming;

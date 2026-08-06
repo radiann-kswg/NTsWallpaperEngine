@@ -5,6 +5,12 @@
 set -u
 cd "$(dirname "$0")"
 
+# OS側の日次pull先（update-creationsdb.sh）があれば、ビルド同梱データより優先して参照する
+CREATIONSDB_DIR="${CREATIONSDB_REPO_DIR:-/opt/ntswallpaper/creationsdb}/data/Works_NumberTales"
+if [ -d "$CREATIONSDB_DIR/DataBases" ]; then
+  export NTSWE_CREATIONSDB="$CREATIONSDB_DIR"
+fi
+
 # RPi の V3D (Mesa) は素の GL バージョン報告が低いため、Unity が要求する 3.3 相当へ引き上げる
 export MESA_GL_VERSION_OVERRIDE=3.3
 export MESA_GLSL_VERSION_OVERRIDE=330

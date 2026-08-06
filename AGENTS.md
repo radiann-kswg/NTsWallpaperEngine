@@ -44,6 +44,7 @@
   - `data/Works_NumberTales/Images/DB_Primary|DB_SemiPrimary|DB_SelfSecondary/corefolder/`（**キャラ画像は `concept` ではなく `corefolder` を使用**）
   - `data/Works_NumberTales/RoleplayPrompts/`（ロールプレイ正本の参照用）
 - クローン直後のセットアップは `scripts/setup-submodule.ps1`（Windows）/ `scripts/setup-submodule.sh`（Linux/macOS）を実行する。sparse設定は `.gitmodules` に保存されないため、**新規クローン時は必ずこのスクリプトを使う**。
+- **DB更新の取得**: Unityメニュー `Signage/Update CreationsDB (git pull + sync)` で、サブモジュールの fetch/pull → `StreamingAssets/CreationsDB` 再同期まで一括実行できる（PATH上のgitが必要）。更新があった場合は親リポジトリのサブモジュール参照（gitlink）を別途コミットすること。
 - サブモジュールは**読み取り専用**。サブモジュール内のファイルを本リポジトリの作業で編集・コミットしない。
 - 表示対象は **`Progress: "released"` かつ corefolder 画像を持つレコードのみ**（未公開情報をサイネージへ出さない）。この条件は `Assets/Scripts/Signage/CreationsDbLoader.cs` が実装しており、緩和は User の明示指示なしに行わない。
 
@@ -61,6 +62,7 @@
 - ビルドターゲット: **StandaloneLinux64**（Mono バックエンド。box64 互換性優先で IL2CPP は使わない）。
 - ビルドはメニュー `Signage/Build Linux x64 (RPi Signage)` またはCLIから `SignageBuild.BuildLinux64` を実行。出力は `Builds/LinuxSignage/`（git管理外）。
 - 成果物は **OSイメージへ直接焼き込む前提**で、別Coworkプロジェクト「Raspberry Pi OS開発」へ引き渡す。引き渡し内容・依存パッケージ・起動コマンドは `docs/raspberrypi-handoff.md` を正とする。自動起動などのOS側設定は本リポジトリの管轄外。
+- **稼働中のDB更新**: OS側日次ジョブ（`scripts/rpi/update-creationsdb.sh`）がDBリポジトリをsparse pullし、アプリは環境変数 `NTSWE_CREATIONSDB` の外部データパスを優先参照・毎日 `dailyReloadHour`（既定04時）に再読込する。ビルドし直し不要でキャラ追加・修正が反映される。
 
 ## 8. 創作内容の取り扱い
 

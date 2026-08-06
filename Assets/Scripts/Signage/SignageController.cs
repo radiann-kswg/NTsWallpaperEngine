@@ -26,6 +26,10 @@ namespace NTsWallpaperEngine.Signage
         [Tooltip("切替間隔（秒）。秒針と同期し、30なら秒針00/30、20なら00/20/40ちょうどで切り替わる（60の約数推奨）")]
         [SerializeField] int switchIntervalSeconds = 30;
 
+        [Header("Daily DB reload (RPi常時稼働向け)")]
+        [Tooltip("毎日この時刻(時)にDBを再読込する。OS側の日次pull（scripts/rpi/update-creationsdb.sh）とセットで運用")]
+        [SerializeField, Range(0, 23)] int dailyReloadHour = 4;
+
         [Header("Background design")]
         [Tooltip("ドット1周期のピクセル数（生成テクスチャ内）")]
         [SerializeField] int dotCellSize = 56;
@@ -41,6 +45,7 @@ namespace NTsWallpaperEngine.Signage
         float _alpha;
         bool _isAnimating;
         long _lastSlot = -1;  // 壁時計同期用の秒スロット
+        DateTime _lastReloadDate; // 日次リロードの実施日
         Texture2D _dotTexture, _gradientTexture, _glowTexture;
 
         System.Random _random = new System.Random();
@@ -48,6 +53,7 @@ namespace NTsWallpaperEngine.Signage
         void Start()
         {
             _records = CreationsDbLoader.LoadAll();
+            _lastReloadDate = DateTime.Now.Date;
             SetupBackground();
             if (view) view.SetClock(DateTime.Now);
 
@@ -83,6 +89,23 @@ namespace NTsWallpaperEngine.Signage
             // クリック/タップでも切り替え（旧実装踏襲）
             if (Input.GetMouseButtonDown(0) && !_isAnimating)
                 StartCoroutine(AnimateCard());
+
+            // 日次リロード: OS側がpullした最新DBを毎日 dailyReloadHour 時に取り込む（常時稼働サイネージ向け）
+            if (now.Date != _lastReloadDate && now.Hour >= dailyReloadHour && !_isAnimating)
+            {
+                _lastReloadDate = now.Date;
+                var reloaded = CreationsDbLoader.LoadAll();
+                if (reloaded.Count > 0)
+                {
+                    _records = reloaded;
+                    _lastIndex = -1;
+                    Debug.Log($"[Signage] 日次リロード完了: {reloaded.Count}件");
+                }
+                else
+                {
+                    Debug.LogWarning("[Signage] 日次リロードで0件だったため、現行データを継続使用");
+                }
+            }
         }
 
         NtCharacterRecord PickNextRecord()

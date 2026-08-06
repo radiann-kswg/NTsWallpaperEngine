@@ -58,6 +58,36 @@ RestartSec=5
 WantedBy=graphical-session.target
 ```
 
+## 3.5 創作DBの日次自動更新（稼働中のデータ更新）
+
+稼働中もDB更新を毎日取り込む仕組みを用意している。**pullはOS側（ネイティブARM git）、アプリは読むだけ**の分担。
+
+1. `scripts/rpi/update-creationsdb.sh` を成果物と一緒に配置（既定の取得先: `/opt/ntswallpaper/creationsdb`。初回はsparseクローン、以降はpull）。
+2. systemdタイマー等で毎日実行する（例: 03:30）。
+
+   ```ini
+   # /etc/systemd/system/creationsdb-update.service
+   [Unit]
+   Description=Update NumberTales CreationsDB
+   [Service]
+   Type=oneshot
+   ExecStart=/opt/ntswallpaper/update-creationsdb.sh
+   ```
+
+   ```ini
+   # /etc/systemd/system/creationsdb-update.timer
+   [Unit]
+   Description=Daily CreationsDB update
+   [Timer]
+   OnCalendar=*-*-* 03:30:00
+   Persistent=true
+   [Install]
+   WantedBy=timers.target
+   ```
+
+3. `run-signage.sh` は取得先が存在すれば環境変数 `NTSWE_CREATIONSDB` を自動設定し、アプリはビルド同梱データより**そちらを優先**して読む。
+4. アプリは毎日 **04:00**（`SignageController.dailyReloadHour` で変更可）にレコードを再読込するため、再起動不要で新キャラ・修正が反映される。ネットワーク断などでpullに失敗した日も、直前のデータで継続動作する。
+
 ## 4. 動作仕様（サイネージ）
 
 - 毎分（時計の分が変わるタイミング）でキャラクターカードが自動切替。画面クリック/タップでも切替。
