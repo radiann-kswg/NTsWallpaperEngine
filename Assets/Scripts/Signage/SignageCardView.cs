@@ -34,7 +34,9 @@ namespace NTsWallpaperEngine.Signage
         public TMP_Text nameEnText;        // 例 "FOLFOURN"
 
         [Header("Profile (bottom-right)")]
-        public TMP_Text profileText;       // Gender / Class / Concept Age
+        public TMP_Text classText;         // Class（1要素1行・可変行数、区切り線の上）
+        public Image classDividerLine;     // ClassとGenderの間の区切り線
+        public TMP_Text profileText;       // Gender / Concept Age（固定2行）
         public TMP_Text modelNameEnText;   // 機体名EN（プロフィール最下行・一回り大きいフォント）
 
         [Header("Clock (top-left)")]
@@ -66,7 +68,7 @@ namespace NTsWallpaperEngine.Signage
         string _numBadgeDisplay = ""; // アニメ確定後の最終表記（例 "222A"）
 
         // 文字アニメーションの確定文字列（スクランブル対象）
-        string _targetModelNumber = "", _targetNameEn = "", _targetModelNameEn = "", _targetProfile = "";
+        string _targetModelNumber = "", _targetNameEn = "", _targetModelNameEn = "", _targetProfile = "", _targetClass = "";
         float _textProgress = 1f;
 
         public NtCharacterRecord Current => _current;
@@ -80,7 +82,9 @@ namespace NTsWallpaperEngine.Signage
             _targetModelNumber = (record.ModelNumber ?? "").Replace("\r", "").Replace("\n", " / ");
             _targetNameEn = FormatNameEnMultiline(record.NameEN);
             _targetModelNameEn = (record.ModelNameEN ?? "").Replace("\r", "").Replace("\n", " / ");
+            _targetClass = BuildClassBlock(record);
             _targetProfile = BuildProfile(record);
+            if (classDividerLine) classDividerLine.gameObject.SetActive(_targetClass.Length > 0);
             // 正式名称は原文表記（小文字あり）のまま使用
             _formalTemplate = string.IsNullOrEmpty(record.FormalNameEN)
                 ? "NumberTales"
@@ -202,6 +206,7 @@ namespace NTsWallpaperEngine.Signage
             ApplyScramble(modelNumberText, _targetModelNumber, _textProgress);
             ApplyScramble(nameEnText, _targetNameEn, _textProgress);
             ApplyScramble(modelNameEnText, _targetModelNameEn, _textProgress);
+            ApplyScrambleValues(classText, _targetClass, _textProgress);
             ApplyScrambleValues(profileText, _targetProfile, _textProgress);
         }
 
@@ -274,11 +279,8 @@ namespace NTsWallpaperEngine.Signage
             }
         }
 
-        /// <summary>
-        /// プロフィール文字列を組み立てる（Heightは表示しない。機体名ENは別要素 modelNameEnText 側）。
-        /// Class はブロック先頭で1要素1行（2行目以降はラベルなしの値のみ）。
-        /// </summary>
-        static string BuildProfile(NtCharacterRecord record)
+        /// <summary>Class ブロック（1要素1行、先頭行のみ "Class: " ラベル）。無ければ空文字。</summary>
+        static string BuildClassBlock(NtCharacterRecord record)
         {
             var sb = new StringBuilder();
             for (int i = 0; i < record.ClassNames.Count; i++)
@@ -286,6 +288,13 @@ namespace NTsWallpaperEngine.Signage
                 if (i == 0) sb.Append("Class: ");
                 sb.Append(record.ClassNames[i]).Append('\n');
             }
+            return sb.ToString().TrimEnd('\n');
+        }
+
+        /// <summary>固定情報ブロック（Gender / Concept Age。Heightは表示しない）。</summary>
+        static string BuildProfile(NtCharacterRecord record)
+        {
+            var sb = new StringBuilder();
             if (!string.IsNullOrEmpty(record.GenderType))
                 sb.Append("Gender: ").Append(record.GenderType).Append('\n');
             if (!string.IsNullOrEmpty(record.ConceptAge))
@@ -328,7 +337,11 @@ namespace NTsWallpaperEngine.Signage
             ApplyAlpha(formalNameText, headerColor, alpha);
             ApplyAlpha(nameEnText, headerColor, alpha);
             ApplyAlpha(modelNameEnText, footerColor, alpha);
+            ApplyAlpha(classText, footerColor, alpha);
             ApplyAlpha(profileText, footerColor, alpha);
+
+            if (classDividerLine)
+                classDividerLine.color = new Color(footerColor.r, footerColor.g, footerColor.b, footerColor.a * alpha * 0.6f);
         }
 
         static void ApplyAlpha(TMP_Text text, Color baseColor, float alpha)

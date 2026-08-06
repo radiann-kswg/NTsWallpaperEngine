@@ -112,9 +112,23 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             var bigNumber = CreateText(canvasGo.transform, "BigNumberText", penchant, 225f,
                 TextAlignmentOptions.BottomLeft, new Vector2(0f, 0f), new Vector2(16f, -22f), new Vector2(650f, 245f));
 
-            // --- Profile (右下: Gender / Class / Concept Age ＋ 最下行に一回り大きい英語機体名) ---
+            // --- Profile (右下・下から: 機体名EN → Gender/Concept Age → 区切り線 → Class複数行) ---
+            var classBlock = CreateText(canvasGo.transform, "ClassText", penchant, 23f,
+                TextAlignmentOptions.BottomRight, new Vector2(1f, 0f), new Vector2(-24f, 144f), new Vector2(700f, 160f));
+            classBlock.lineSpacing = 12f;
+
+            var dividerGo = new GameObject("ClassDividerLine", typeof(RectTransform), typeof(Image));
+            var dividerRect = (RectTransform)dividerGo.transform;
+            dividerRect.SetParent(canvasGo.transform, false);
+            dividerRect.anchorMin = dividerRect.anchorMax = new Vector2(1f, 0f);
+            dividerRect.pivot = new Vector2(1f, 0f);
+            dividerRect.anchoredPosition = new Vector2(-24f, 136f);
+            dividerRect.sizeDelta = new Vector2(300f, 2f);
+            var divider = dividerGo.GetComponent<Image>();
+            divider.raycastTarget = false;
+
             var profile = CreateText(canvasGo.transform, "ProfileText", penchant, 23f,
-                TextAlignmentOptions.BottomRight, new Vector2(1f, 0f), new Vector2(-24f, 64f), new Vector2(700f, 240f));
+                TextAlignmentOptions.BottomRight, new Vector2(1f, 0f), new Vector2(-24f, 64f), new Vector2(700f, 66f));
             profile.lineSpacing = 12f;
             var modelNameEn = CreateText(canvasGo.transform, "ModelNameEnText", penchant, 30f,
                 TextAlignmentOptions.BottomRight, new Vector2(1f, 0f), new Vector2(-24f, 24f), new Vector2(800f, 40f));
@@ -137,6 +151,8 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             view.modelNumberText = modelNumber;
             view.formalNameText = formalName;
             view.nameEnText = nameEn;
+            view.classText = classBlock;
+            view.classDividerLine = divider;
             view.profileText = profile;
             view.modelNameEnText = modelNameEn;
             view.clockText = clock;
