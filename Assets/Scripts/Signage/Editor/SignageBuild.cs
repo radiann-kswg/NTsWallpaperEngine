@@ -36,7 +36,10 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             var target = NamedBuildTarget.Standalone;
             PlayerSettings.SetScriptingBackend(target, ScriptingImplementation.Mono2x);
             PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
-            PlayerSettings.defaultIsNativeResolution = true;
+            // RPi 4B向け: 960x540レンダリングで負荷を1/4に（表示はフルスクリーンで拡大）
+            PlayerSettings.defaultIsNativeResolution = false;
+            PlayerSettings.defaultScreenWidth = 960;
+            PlayerSettings.defaultScreenHeight = 540;
             PlayerSettings.runInBackground = true;
             PlayerSettings.resizableWindow = false;
 

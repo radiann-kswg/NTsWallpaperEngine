@@ -39,6 +39,8 @@ Unityメニュー `Signage/Build Linux x64 (RPi Signage)` の実行で生成さ�
 
 スクリプト内で `MESA_GL_VERSION_OVERRIDE=3.3` を設定している（V3DのGLバージョン報告がUnity要求より低いための引き上げ。本サイネージは2D UIのみなので実用上動作する想定）。
 
+レンダリング解像度は **960x540**（UIの基準解像度と一致）。フルスクリーン表示時はディスプレイ側で拡大されるため、RPi 4Bの描画負荷はフルHD比で約1/4になる。
+
 自動起動の例（OS開発側の参考。systemdユーザーユニット or デスクトップautostart）:
 
 ```ini

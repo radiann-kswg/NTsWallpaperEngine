@@ -14,8 +14,9 @@ export BOX64_DYNAREC_BIGBLOCK=2
 export BOX64_DYNAREC_SAFEFLAGS=1
 export BOX64_LOG=0
 
+# 960x540レンダリング（RPi 4Bの負荷対策。フルスクリーン表示時はディスプレイ側で拡大される）
 exec box64 ./NTsWallpaperEngine.x86_64 \
   -screen-fullscreen 1 \
-  -screen-width 1920 \
-  -screen-height 1080 \
+  -screen-width 960 \
+  -screen-height 540 \
   "$@"

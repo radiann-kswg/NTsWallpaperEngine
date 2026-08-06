@@ -23,7 +23,7 @@ namespace NTsWallpaperEngine.Signage
         [Header("Character")]
         public RawImage characterImage;
         [Tooltip("コアフォルダ画像の一律縮小率（元画像はキャラ間でサイズ校正済みのため、全員同じ倍率で縮小して相対サイズを保持する）")]
-        [Range(0.1f, 2f)] public float characterScale = 1.40f;
+        [Range(0.1f, 2f)] public float characterScale = 0.78f;
 
         [Header("Big number (left)")]
         public TMP_Text bigNumberText;    // 例 "044"（旧シーン踏襲の大型番号・カウント演出対象）
@@ -91,10 +91,10 @@ namespace NTsWallpaperEngine.Signage
             _numericNum = numMatch.Success;
             _rawNumDisplay = record.NumRaw ?? "";
             _numDigits = _numericNum ? numMatch.Value.Length : 1;
-            // 最終表記はバッジ優先（"222A"/"67B" のようなサフィックス付き個体を区別して着地させる）
-            _numBadgeDisplay = !string.IsNullOrEmpty(record.NumBadge)
-                ? record.NumBadge
-                : (_numericNum ? numMatch.Value : _rawNumDisplay);
+            // 最終表記はできるだけ数字のみ:
+            //   "222A"→"222" / "2-alt"→"2" / "777.Jackpot"→"777"（suffixに数字が無ければ除去）
+            //   "3x11"→"3x11"（残部に数字を含む数式表記はそのまま） / "000"→"000"（ゼロ埋め保持） / "%"や"∞"はそのまま
+            _numBadgeDisplay = ExtractDisplayNum(_rawNumDisplay);
 
             SetTexture(texture);
             SetAnimatedNumber(record.NumValue);
@@ -174,11 +174,24 @@ namespace NTsWallpaperEngine.Signage
             }
         }
 
-        /// <summary>カウント演出の確定後に呼ぶ。大型番号をバッジ表記（例 "222A"）で着地させる。</summary>
+        /// <summary>カウント演出の確定後に呼ぶ。大型番号を確定表記（数字のみ優先）で着地させる。</summary>
         public void SetNumberFinal()
         {
             if (bigNumberText && !string.IsNullOrEmpty(_numBadgeDisplay))
                 bigNumberText.text = _numBadgeDisplay;
+        }
+
+        /// <summary>
+        /// Num の確定表示形式。先頭数字の後ろに数字を含まないsuffixが付く場合のみ数字部分へ丸める。
+        /// 例: "222A"→"222", "2-alt"→"2", "777.Jackpot"→"777", "3x11"→"3x11", "000"→"000", "%"→"%"
+        /// </summary>
+        static string ExtractDisplayNum(string raw)
+        {
+            if (string.IsNullOrEmpty(raw)) return "";
+            var m = Regex.Match(raw, @"^\d+");
+            if (!m.Success) return raw;                     // 数字を持たない特殊個体はそのまま
+            string rest = raw.Substring(m.Value.Length);
+            return Regex.IsMatch(rest, @"\d") ? raw : m.Value; // 残部に数字→数式表記なのでそのまま
         }
 
         /// <summary>
