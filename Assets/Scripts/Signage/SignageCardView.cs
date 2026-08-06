@@ -376,7 +376,7 @@ namespace NTsWallpaperEngine.Signage
             return string.Join("\n", lines);
         }
 
-        /// <summary>"44(Folfourn)" → "FOLFOURN" ／ "Binor (Twicy)" → "BINOR(TWICY)"</summary>
+        /// <summary>"44(Folfourn)" → "Folfourn" ／ "Binor (Twicy)" → "Binor(Twicy)"（原文の大文字小文字を保持）</summary>
         static string FormatNameEn(string nameEn)
         {
             if (string.IsNullOrEmpty(nameEn)) return "";
@@ -386,10 +386,10 @@ namespace NTsWallpaperEngine.Signage
                 string head = m.Groups["head"].Value.Trim();
                 string inner = m.Groups["inner"].Value.Trim();
                 if (Regex.IsMatch(head, @"^[\d\-]*$"))
-                    return inner.ToUpperInvariant();
-                return $"{head.ToUpperInvariant()}({inner.ToUpperInvariant()})";
+                    return inner;
+                return $"{head}({inner})";
             }
-            return nameEn.Trim().ToUpperInvariant();
+            return nameEn.Trim();
         }
     }
 }
