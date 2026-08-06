@@ -19,6 +19,8 @@ namespace NTsWallpaperEngine.Signage
         [SerializeField] int numAnimDuration = 300;
         [SerializeField] float acceleration = 2.65f;
         [SerializeField] float animationTime = 1.4f;
+        [Tooltip("文字スクランブルがフェードインより先に確定する倍率")]
+        [SerializeField] float textAnimSpeed = 1.35f;
 
         [Header("Switching")]
         [Tooltip("分の変化ごとに切り替える（サイネージ既定）")]
@@ -63,6 +65,9 @@ namespace NTsWallpaperEngine.Signage
 
         void Update()
         {
+            // 時計は毎フレーム更新（「:」の点滅のため）
+            if (view) view.SetClock(DateTime.Now);
+
             if (_nowDateTime.Minute != DateTime.Now.Minute)
             {
                 SetNowDateTime();
@@ -127,18 +132,20 @@ namespace NTsWallpaperEngine.Signage
             view.Apply(_next, texture);
             view.SetAlpha(0f);
 
-            // フェードイン（数字はカウントダウンで本来の番号へ収束）
+            // フェードイン（数字はカウントダウンで収束、文字はスクランブル→確定）
             int target = _next.NumValue;
             while (_alpha < 1f)
             {
                 int shown = target - Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - _alpha, acceleration));
                 view.SetAnimatedNumber(shown);
+                view.SetTextProgress(_alpha * textAnimSpeed);
                 view.SetAlpha(_alpha);
                 _alpha += Time.deltaTime / animationTime;
                 yield return null;
             }
             _alpha = 1f;
             view.SetAnimatedNumber(target);
+            view.SetTextProgress(1f);
             view.SetAlpha(1f);
             _isAnimating = false;
         }

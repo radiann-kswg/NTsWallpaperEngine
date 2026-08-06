@@ -40,6 +40,14 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             if (Directory.Exists(dst)) Directory.Delete(dst, true);
             Directory.CreateDirectory(Path.Combine(dst, "DataBases"));
 
+            // Class英文表記辞書
+            string dictSrc = Path.Combine(src, "Dictionaries", "dict_Class.json");
+            if (File.Exists(dictSrc))
+            {
+                Directory.CreateDirectory(Path.Combine(dst, "Dictionaries"));
+                File.Copy(dictSrc, Path.Combine(dst, "Dictionaries", "dict_Class.json"), true);
+            }
+
             int copiedImages = 0, releasedCount = 0;
             foreach (var (dbKey, jsonName) in Sources)
             {

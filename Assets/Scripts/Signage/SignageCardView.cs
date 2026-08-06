@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using TMPro;
 using UnityEngine;
@@ -6,8 +7,10 @@ using UnityEngine.UI;
 namespace NTsWallpaperEngine.Signage
 {
     /// <summary>
-    /// emstk-rv コアフォルダカード風のUI要素一式への参照と、レコード反映処理。
-    /// レイアウト: 右上=型番/FormalName(数字アニメ)/英名、中央=corefolder画像、左下=和名/機体名、左上=時計。
+    /// emstk-rv コアフォルダカード風のUI要素一式への参照と、レコード反映処理（英文表示のみ）。
+    /// レイアウト: 左=大型番号（カウント演出）、中央右=corefolder画像、右上=型番/FormalName/英名、
+    /// 左下=英語機体名、左上=時計。
+    /// テキストは「スクランブル→確定」の文字アニメーションで表示する。
     /// </summary>
     public class SignageCardView : MonoBehaviour
     {
@@ -19,56 +22,97 @@ namespace NTsWallpaperEngine.Signage
 
         [Header("Character")]
         public RawImage characterImage;
-        public AspectRatioFitter characterAspect;
+        [Tooltip("コアフォルダ画像の一律縮小率（元画像はキャラ間でサイズ校正済みのため、全員同じ倍率で縮小して相対サイズを保持する）")]
+        [Range(0.1f, 2f)] public float characterScale = 1.20f;
+
+        [Header("Big number (left)")]
+        public TMP_Text bigNumberText;    // 例 "044"（旧シーン踏襲の大型番号・カウント演出対象）
 
         [Header("Header (top-right)")]
         public TMP_Text modelNumberText;   // 例 "APHR-NT IV+[R]IV"
-        public TMP_Text formalNameText;    // 例 "NUMBERTALES #44"（#部分が数字アニメ対象）
+        public TMP_Text formalNameText;    // 例 "NUMBERTALES #044"（#部分が数字アニメ対象）
         public TMP_Text nameEnText;        // 例 "FOLFOURN"
 
         [Header("Footer (bottom-left)")]
-        public TMP_Text nameJpText;        // 例 "シトシ"
-        public TMP_Text modelNameJpText;   // 例 "ナンバーテールズ 正規+改良型4号機(44番機)"
+        public TMP_Text modelNameEnText;   // 例 "NumberTales' Regular+Improved Mk.4 (Mk.44)"
+
+        [Header("Profile (bottom-right, 既存シーン準拠)")]
+        public TMP_Text profileText;       // Gender / Class / Height / Concept Age
 
         [Header("Clock (top-left)")]
         public TMP_Text clockText;
 
         [Header("Colors")]
-        public Color headerColor = new Color(1f, 1f, 1f, 0.92f);
-        public Color footerColor = new Color(50f / 255f, 50f / 255f, 50f / 255f);
+        [Tooltip("背景が明るいときの文字色")]
+        public Color darkTextColor = new Color(45f / 255f, 45f / 255f, 45f / 255f);
+        [Tooltip("背景が暗いときの文字色")]
+        public Color lightTextColor = Color.white;
+        [Tooltip("この知覚輝度以上なら背景を「明るい」と判定")]
+        [Range(0f, 1f)] public float luminanceThreshold = 0.55f;
+        Color headerColor = new Color(1f, 1f, 1f, 0.92f);
+        Color footerColor = new Color(50f / 255f, 50f / 255f, 50f / 255f);
+        [Tooltip("大型番号の不透明度（透かし風）")]
+        [Range(0f, 1f)] public float bigNumberAlpha = 0.42f;
         [Range(0f, 1f)] public float backgroundPastel = 0.62f;
+
+        const string ScramblePool = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ#-+.[]";
+
+        static readonly Regex NumTokenRegex = new Regex(@"#[\w\.\-]+");
 
         NtCharacterRecord _current;
         Texture2D _texture;
-        string _formalPrefix = "NUMBERTALES";
+        string _formalTemplate = "NUMBERTALES";  // FormalName_EN全文（#番号トークンにアニメ数字を埋め込む）
         int _numDigits = 2;
+        bool _numericNum = true;     // Numが数字を持つか（%や∞などの特殊個体はfalse）
+        string _rawNumDisplay = "";  // 非数値個体の表示用
+
+        // 文字アニメーションの確定文字列（スクランブル対象）
+        string _targetModelNumber = "", _targetNameEn = "", _targetModelNameEn = "", _targetProfile = "";
+        float _textProgress = 1f;
 
         public NtCharacterRecord Current => _current;
 
-        /// <summary>レコードの静的テキスト・画像・背景色を反映する（数字は SetAnimatedNumber で駆動）。</summary>
+        /// <summary>レコードの静的テキスト・画像・背景色を反映する（数字は SetAnimatedNumber、文字は SetTextProgress で駆動）。</summary>
         public void Apply(NtCharacterRecord record, Texture2D texture)
         {
             _current = record;
 
-            if (modelNumberText) modelNumberText.text = record.ModelNumber ?? "";
-            _formalPrefix = ExtractFormalPrefix(record.FormalNameEN);
-            _numDigits = Mathf.Max(1, (record.NumBadge ?? record.NumValue.ToString()).Replace("-", "").Length);
-            if (nameEnText) nameEnText.text = FormatNameEn(record.NameEN);
-            if (nameJpText) nameJpText.text = FormatNameJp(record.NameJP);
-            if (modelNameJpText) modelNameJpText.text = record.ModelNameJP ?? "";
+            // 複数行の型番は1行に連結（大型番号との重なり防止）
+            _targetModelNumber = (record.ModelNumber ?? "").Replace("\r", "").Replace("\n", " / ");
+            _targetNameEn = FormatNameEnMultiline(record.NameEN);
+            _targetModelNameEn = record.ModelNameEN ?? "";
+            _targetProfile = BuildProfile(record);
+            _formalTemplate = string.IsNullOrEmpty(record.FormalNameEN)
+                ? "NUMBERTALES"
+                : record.FormalNameEN.Replace("\r", "").Replace("\n", " ").Trim().ToUpperInvariant();
+            // Numの先頭数字のみを表示（"2-alt"→2, "10-alt"→10, "222-mp"→222 のようにsuffixは除去）
+            var numMatch = Regex.Match(record.NumRaw ?? "", @"^\d+");
+            _numericNum = numMatch.Success;
+            _rawNumDisplay = record.NumRaw ?? "";
+            _numDigits = _numericNum ? numMatch.Value.Length : 1;
 
             SetTexture(texture);
             SetAnimatedNumber(record.NumValue);
+            SetTextProgress(0f);
 
             ApplyTheme(record.HasThemeColor ? record.ThemeColor : new Color(0.72f, 0.85f, 0.90f));
         }
 
-        /// <summary>テーマ色を背景3層（ベース・グラデーション・ドット）へ展開する。</summary>
+        /// <summary>テーマ色を背景3層（ベース・グラデーション・ドット）と文字色へ展開する。</summary>
         public void ApplyTheme(Color theme)
         {
             // ベース: 明るいパステル
+            var baseColor = Color.Lerp(theme, Color.white, backgroundPastel);
             if (background)
-                background.color = Color.Lerp(theme, Color.white, backgroundPastel);
+                background.color = baseColor;
+
+            // 背景の知覚輝度で文字色を全体統一（明るい背景=黒系 / 暗い背景=白系）
+            float luminance = 0.299f * baseColor.r + 0.587f * baseColor.g + 0.114f * baseColor.b;
+            Color textColor = luminance >= luminanceThreshold ? darkTextColor : lightTextColor;
+            headerColor = new Color(textColor.r, textColor.g, textColor.b, 0.92f);
+            footerColor = textColor;
+            if (clockText)
+                clockText.color = new Color(textColor.r, textColor.g, textColor.b, 0.85f);
 
             // グラデーション: テーマ色をやや濃く・彩度高めにした層（テクスチャ側は白+縦αランプ）
             if (gradientOverlay)
@@ -93,18 +137,123 @@ namespace NTsWallpaperEngine.Signage
             if (characterImage)
             {
                 characterImage.texture = texture;
-                if (characterAspect && texture)
-                    characterAspect.aspectRatio = (float)texture.width / texture.height;
+                // ネイティブ解像度 × 一律スケール（キャラ間のサイズ校正を保持）
+                if (texture)
+                    characterImage.rectTransform.sizeDelta =
+                        new Vector2(texture.width, texture.height) * characterScale;
             }
         }
 
-        /// <summary>数字アニメーション中の表示値を反映（"NUMBERTALES #044" 形式）。</summary>
+        /// <summary>数字アニメーション中の表示値を反映（大型番号 と "NUMBERTALES #044" の両方）。</summary>
         public void SetAnimatedNumber(int shownValue)
         {
-            if (!formalNameText) return;
+            // 数字を持たない特殊個体（% や ∞ など）はカウント演出なしでそのまま表示
+            if (!_numericNum)
+            {
+                if (bigNumberText) bigNumberText.text = _rawNumDisplay;
+                if (formalNameText) formalNameText.text = _formalTemplate;
+                return;
+            }
+
             int modulo = (int)Mathf.Pow(10, _numDigits);
             int v = ((shownValue % modulo) + modulo) % modulo;
-            formalNameText.text = $"{_formalPrefix} #{v.ToString("D" + _numDigits)}";
+            string digits = v.ToString("D" + _numDigits);
+
+            if (bigNumberText) bigNumberText.text = digits;
+            if (formalNameText)
+            {
+                // FormalName_EN 全文の「#番号」トークン（最初の1つ）にアニメ中の数字を埋め込む
+                formalNameText.text = NumTokenRegex.IsMatch(_formalTemplate)
+                    ? NumTokenRegex.Replace(_formalTemplate, "#" + digits, 1)
+                    : $"{_formalTemplate} #{digits}";
+            }
+        }
+
+        /// <summary>
+        /// 文字アニメーション進行度 (0..1)。未確定位置はスクランブル文字で表示し、進行に応じて左から確定する。
+        /// </summary>
+        public void SetTextProgress(float progress)
+        {
+            _textProgress = Mathf.Clamp01(progress);
+            ApplyScramble(modelNumberText, _targetModelNumber, _textProgress);
+            ApplyScramble(nameEnText, _targetNameEn, _textProgress);
+            ApplyScramble(modelNameEnText, _targetModelNameEn, _textProgress);
+            ApplyScrambleValues(profileText, _targetProfile, _textProgress);
+        }
+
+        /// <summary>
+        /// プロフィール用: 各行の「ラベル: 」は常に確定表示し、値の部分（DBの値）だけをスクランブル→確定させる。
+        /// </summary>
+        static void ApplyScrambleValues(TMP_Text text, string target, float progress)
+        {
+            if (!text) return;
+            if (string.IsNullOrEmpty(target)) { text.text = ""; return; }
+            if (progress >= 1f) { text.text = target; return; }
+
+            var lines = target.Split('\n');
+            var sb = new StringBuilder(target.Length);
+            for (int li = 0; li < lines.Length; li++)
+            {
+                string line = lines[li];
+                int sep = line.IndexOf(": ", System.StringComparison.Ordinal);
+                if (sep < 0)
+                {
+                    AppendScrambled(sb, line, progress);
+                }
+                else
+                {
+                    sb.Append(line, 0, sep + 2);                      // ラベルは固定
+                    AppendScrambled(sb, line.Substring(sep + 2), progress); // 値のみアニメーション
+                }
+                if (li < lines.Length - 1) sb.Append('\n');
+            }
+            text.text = sb.ToString();
+        }
+
+        static void AppendScrambled(StringBuilder sb, string target, float progress)
+        {
+            int revealed = Mathf.FloorToInt(target.Length * progress);
+            sb.Append(target, 0, revealed);
+            for (int i = revealed; i < target.Length; i++)
+            {
+                char c = target[i];
+                if (char.IsWhiteSpace(c)) sb.Append(c);
+                else sb.Append(ScramblePool[Random.Range(0, ScramblePool.Length)]);
+            }
+        }
+
+        /// <summary>既存シーン（旧CharacterAssetsDB）準拠のプロフィール文字列を組み立てる。値が無い行は省略。</summary>
+        static string BuildProfile(NtCharacterRecord record)
+        {
+            var sb = new StringBuilder();
+            if (!string.IsNullOrEmpty(record.GenderType))
+                sb.Append("Gender: ").Append(record.GenderType).Append('\n');
+            if (record.ClassNames.Count > 0)
+                sb.Append("Class: ").Append(string.Join(", ", record.ClassNames)).Append('\n');
+            if (record.HeightCm > 0)
+                sb.Append("Height: ").Append(record.HeightCm).Append("cm\n");
+            if (!string.IsNullOrEmpty(record.ConceptAge))
+                sb.Append("Concept Age: ").Append(record.ConceptAge);
+            return sb.ToString().TrimEnd('\n');
+        }
+
+        static void ApplyScramble(TMP_Text text, string target, float progress)
+        {
+            if (!text) return;
+            if (string.IsNullOrEmpty(target)) { text.text = ""; return; }
+            if (progress >= 1f) { text.text = target; return; }
+
+            int revealed = Mathf.FloorToInt(target.Length * progress);
+            var sb = new StringBuilder(target.Length);
+            sb.Append(target, 0, revealed);
+            for (int i = revealed; i < target.Length; i++)
+            {
+                char c = target[i];
+                // 空白・記号の位置はそのまま残すと単語の輪郭が見えて読みやすい
+                if (char.IsWhiteSpace(c)) sb.Append(c);
+                else sb.Append(ScramblePool[Random.Range(0, ScramblePool.Length)]);
+            }
+            text.text = sb.ToString();
         }
 
         /// <summary>フェード用に全表示要素へアルファを適用。</summary>
@@ -113,11 +262,12 @@ namespace NTsWallpaperEngine.Signage
             if (characterImage)
                 characterImage.color = new Color(1f, 1f, 1f, alpha);
 
+            ApplyAlpha(bigNumberText, footerColor, alpha * bigNumberAlpha);
             ApplyAlpha(modelNumberText, headerColor, alpha);
             ApplyAlpha(formalNameText, headerColor, alpha);
             ApplyAlpha(nameEnText, headerColor, alpha);
-            ApplyAlpha(nameJpText, footerColor, alpha);
-            ApplyAlpha(modelNameJpText, footerColor, alpha);
+            ApplyAlpha(modelNameEnText, footerColor, alpha);
+            ApplyAlpha(profileText, footerColor, alpha);
         }
 
         static void ApplyAlpha(TMP_Text text, Color baseColor, float alpha)
@@ -126,19 +276,24 @@ namespace NTsWallpaperEngine.Signage
             text.color = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * alpha);
         }
 
+        /// <summary>時計表示。「:」は0.5秒周期で点滅（非表示時も透明表示で幅を保持し、桁ズレを防ぐ）。</summary>
         public void SetClock(System.DateTime now)
         {
-            if (clockText) clockText.text = $"{now.Hour:D2} {now.Minute:D2}";
+            if (!clockText) return;
+            bool colonVisible = now.Millisecond < 500;
+            string colon = colonVisible ? ":" : "<alpha=#00>:<alpha=#FF>";
+            clockText.text = $"{now.Hour:D2}{colon}{now.Minute:D2}";
         }
 
         // ---- 表記整形 ----
 
-        /// <summary>"NumberTales #44" → "NUMBERTALES" / "NumberTales [Dev.]" → "NUMBERTALES [DEV.]"</summary>
-        static string ExtractFormalPrefix(string formalNameEn)
+        /// <summary>複数行の Name_EN を行ごとに整形して連結（例 "222(Doppels)\n222(Doppelgans)" → "DOPPELS\nDOPPELGANS"）。</summary>
+        static string FormatNameEnMultiline(string nameEn)
         {
-            if (string.IsNullOrEmpty(formalNameEn)) return "NUMBERTALES";
-            string s = Regex.Replace(formalNameEn, @"\s*#[\w\-\.]+\s*$", "");
-            return s.Trim().ToUpperInvariant();
+            if (string.IsNullOrEmpty(nameEn)) return "";
+            var lines = nameEn.Replace("\r", "").Split('\n');
+            for (int i = 0; i < lines.Length; i++) lines[i] = FormatNameEn(lines[i]);
+            return string.Join("\n", lines);
         }
 
         /// <summary>"44(Folfourn)" → "FOLFOURN" ／ "Binor (Twicy)" → "BINOR(TWICY)"</summary>
@@ -155,16 +310,6 @@ namespace NTsWallpaperEngine.Signage
                 return $"{head.ToUpperInvariant()}({inner.ToUpperInvariant()})";
             }
             return nameEn.Trim().ToUpperInvariant();
-        }
-
-        /// <summary>"44(シトシ)" → "シトシ" ／ "バイナ(ツギ)" → "バイナ(ツギ)"（先頭が数字のときだけ中身を抽出）</summary>
-        static string FormatNameJp(string nameJp)
-        {
-            if (string.IsNullOrEmpty(nameJp)) return "";
-            var m = Regex.Match(nameJp, @"^\s*(?<head>[^(（]*?)\s*[（(]\s*(?<inner>.+?)\s*[)）]\s*$");
-            if (m.Success && Regex.IsMatch(m.Groups["head"].Value.Trim(), @"^[\d\-]*$"))
-                return m.Groups["inner"].Value.Trim();
-            return nameJp.Trim();
         }
     }
 }

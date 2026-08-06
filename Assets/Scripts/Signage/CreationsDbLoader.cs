@@ -27,6 +27,10 @@ namespace NTsWallpaperEngine.Signage
         public string ModelNumber;      // 例 "APHR-NT IV+[R]IV"
         public string ModelNameJP;      // 例 "ナンバーテールズ 正規+改良型4号機(44番機)"
         public string ModelNameEN;
+        public string GenderType;       // 例 "Neutral" / "Female"（EN表記）
+        public List<string> ClassNames = new List<string>();  // 所属クラス（DB表記のまま）
+        public int HeightCm;
+        public string ConceptAge;
         public List<string> ImagePaths = new List<string>();  // corefolder画像の絶対パス
         public Color ThemeColor = new Color(0.72f, 0.85f, 0.90f);
         public bool HasThemeColor;
@@ -68,6 +72,8 @@ namespace NTsWallpaperEngine.Signage
                 return results;
             }
 
+            var classDict = LoadClassDictionary(root);
+
             foreach (var (dbKey, jsonName) in Sources)
             {
                 string jsonPath = Path.Combine(root, "DataBases", jsonName);
@@ -91,7 +97,7 @@ namespace NTsWallpaperEngine.Signage
                 foreach (var token in array)
                 {
                     if (token is not JObject obj) continue;
-                    var record = ParseRecord(obj, dbKey, root);
+                    var record = ParseRecord(obj, dbKey, root, classDict);
                     if (record != null) results.Add(record);
                 }
             }
@@ -100,7 +106,30 @@ namespace NTsWallpaperEngine.Signage
             return results;
         }
 
-        static NtCharacterRecord ParseRecord(JObject obj, string dbKey, string root)
+        /// <summary>dict_Class.json（Class → Class_EN）を読み込む。無ければ空辞書。</summary>
+        static Dictionary<string, string> LoadClassDictionary(string root)
+        {
+            var dict = new Dictionary<string, string>();
+            string path = Path.Combine(root, "Dictionaries", "dict_Class.json");
+            if (!File.Exists(path)) return dict;
+            try
+            {
+                foreach (var token in JArray.Parse(File.ReadAllText(path)))
+                {
+                    if (token is not JObject o) continue;
+                    string jp = (string)o["Class"];
+                    string en = (string)o["Class_EN"];
+                    if (!string.IsNullOrEmpty(jp) && !string.IsNullOrEmpty(en)) dict[jp] = en;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[Signage] dict_Class.json のパースに失敗: {e.Message}");
+            }
+            return dict;
+        }
+
+        static NtCharacterRecord ParseRecord(JObject obj, string dbKey, string root, Dictionary<string, string> classDict)
         {
             // released のみ（未公開情報をサイネージへ出さない）
             if (!string.Equals((string)obj["Progress"], "released", StringComparison.OrdinalIgnoreCase))
@@ -122,8 +151,19 @@ namespace NTsWallpaperEngine.Signage
                 ModelNumber = (string)obj["ModelNumber"],
                 ModelNameJP = (string)obj["ModelName_JP"],
                 ModelNameEN = (string)obj["ModelName_EN"],
+                GenderType = TokenToString(obj["GenderType"]),
+                ConceptAge = TokenToString(obj["ConceptAge"]),
             };
             record.NumValue = ExtractLeadingNumber(record.NumRaw);
+            record.HeightCm = obj["Height_cm"]?.Type == JTokenType.Integer ? (int)obj["Height_cm"] : 0;
+            if (obj["Class"] is JArray classes)
+                foreach (var c in classes)
+                {
+                    string name = (string)c;
+                    if (string.IsNullOrEmpty(name)) continue;
+                    // dict_Class.json の英文表記を優先（無い場合のみDB表記のまま）
+                    record.ClassNames.Add(classDict.TryGetValue(name, out var en) ? en : name);
+                }
 
             foreach (var rel in corefolder)
             {

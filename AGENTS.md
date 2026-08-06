@@ -40,6 +40,7 @@
 - `100BeautiesLab_CreationsDB/` は `radiann-kswg/100BeautiesLab_CreationsDB` の**資料・データ用サブモジュール**（追跡ブランチ: `develop`）。
 - サイネージが使用するのは `data/Works_NumberTales/` のうち **`db_Primary` / `db_SemiPrimary` / `db_SelfSecondary` の3DBのみ**。sparse-checkout でこの範囲だけを取り込む:
   - `data/Works_NumberTales/DataBases/`（3つの `db_*.json` とメタ）
+  - `data/Works_NumberTales/Dictionaries/`（`dict_Class.json` のClass英文表記などの辞書）
   - `data/Works_NumberTales/Images/DB_Primary|DB_SemiPrimary|DB_SelfSecondary/corefolder/`（**キャラ画像は `concept` ではなく `corefolder` を使用**）
   - `data/Works_NumberTales/RoleplayPrompts/`（ロールプレイ正本の参照用）
 - クローン直後のセットアップは `scripts/setup-submodule.ps1`（Windows）/ `scripts/setup-submodule.sh`（Linux/macOS）を実行する。sparse設定は `.gitmodules` に保存されないため、**新規クローン時は必ずこのスクリプトを使う**。

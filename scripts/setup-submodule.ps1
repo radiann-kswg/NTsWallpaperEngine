@@ -10,6 +10,7 @@ git sparse-checkout set --no-cone `
   '/*.md' `
   '/LICENCE' `
   '/data/Works_NumberTales/DataBases/**' `
+  '/data/Works_NumberTales/Dictionaries/**' `
   '/data/Works_NumberTales/RoleplayPrompts/**' `
   '/data/Works_NumberTales/Images/DB_Primary/corefolder/**' `
   '/data/Works_NumberTales/Images/DB_SemiPrimary/corefolder/**' `
