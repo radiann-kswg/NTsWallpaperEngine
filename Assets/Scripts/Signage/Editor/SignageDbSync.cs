@@ -40,12 +40,13 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             if (Directory.Exists(dst)) Directory.Delete(dst, true);
             Directory.CreateDirectory(Path.Combine(dst, "DataBases"));
 
-            // Class英文表記辞書
-            string dictSrc = Path.Combine(src, "Dictionaries", "dict_Class.json");
-            if (File.Exists(dictSrc))
+            // Class英文表記辞書（dict_Triples.json は3桁番個体のクラスを収録。一覧はローダ側が正）
+            foreach (string dictName in CreationsDbLoader.ClassDictionaryFiles)
             {
+                string dictSrc = Path.Combine(src, "Dictionaries", dictName);
+                if (!File.Exists(dictSrc)) continue;
                 Directory.CreateDirectory(Path.Combine(dst, "Dictionaries"));
-                File.Copy(dictSrc, Path.Combine(dst, "Dictionaries", "dict_Class.json"), true);
+                File.Copy(dictSrc, Path.Combine(dst, "Dictionaries", dictName), true);
             }
 
             int copiedImages = 0, releasedCount = 0;

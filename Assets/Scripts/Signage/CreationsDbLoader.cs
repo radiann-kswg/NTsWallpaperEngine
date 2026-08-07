@@ -186,25 +186,41 @@ namespace NTsWallpaperEngine.Signage
             state[obj] = 2;
         }
 
-        /// <summary>dict_Class.json（Class → Class_EN）を読み込む。無ければ空辞書。</summary>
+        /// <summary>
+        /// クラス辞書（Class → Class_EN）の実体ファイル。同一スキーマの複数辞書を併合して使う。
+        /// dict_Triples.json は3桁番個体（223, 753 等）のクラスを収録する。
+        /// SignageDbSync（サブモジュール → StreamingAssets 同期）もこの一覧を参照する。
+        /// </summary>
+        public static readonly string[] ClassDictionaryFiles =
+        {
+            "dict_Class.json",
+            "dict_Triples.json",
+        };
+
+        /// <summary>クラス辞書群（Class → Class_EN）を読み込んで併合する。無ければ空辞書。</summary>
         static Dictionary<string, string> LoadClassDictionary(string root)
         {
             var dict = new Dictionary<string, string>();
-            string path = Path.Combine(root, "Dictionaries", "dict_Class.json");
-            if (!File.Exists(path)) return dict;
-            try
+            foreach (string fileName in ClassDictionaryFiles)
             {
-                foreach (var token in JArray.Parse(File.ReadAllText(path)))
+                string path = Path.Combine(root, "Dictionaries", fileName);
+                if (!File.Exists(path)) continue;
+                try
                 {
-                    if (token is not JObject o) continue;
-                    string jp = (string)o["Class"];
-                    string en = (string)o["Class_EN"];
-                    if (!string.IsNullOrEmpty(jp) && !string.IsNullOrEmpty(en)) dict[jp] = en;
+                    foreach (var token in JArray.Parse(File.ReadAllText(path)))
+                    {
+                        if (token is not JObject o) continue;
+                        string jp = (string)o["Class"];
+                        string en = (string)o["Class_EN"];
+                        // 先勝ち（万一キーが重複した場合は先に読んだ辞書を正とする）
+                        if (!string.IsNullOrEmpty(jp) && !string.IsNullOrEmpty(en) && !dict.ContainsKey(jp))
+                            dict[jp] = en;
+                    }
                 }
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[Signage] dict_Class.json のパースに失敗: {e.Message}");
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[Signage] {fileName} のパースに失敗: {e.Message}");
+                }
             }
             return dict;
         }
@@ -251,7 +267,7 @@ namespace NTsWallpaperEngine.Signage
                 {
                     string name = (string)c;
                     if (string.IsNullOrEmpty(name)) continue;
-                    // dict_Class.json の英文表記を優先（無い場合のみDB表記のまま）
+                    // クラス辞書群（ClassDictionaryFiles）の英文表記を優先（無い場合のみDB表記のまま）
                     record.ClassNames.Add(classDict.TryGetValue(name, out var en) ? en : name);
                 }
 
