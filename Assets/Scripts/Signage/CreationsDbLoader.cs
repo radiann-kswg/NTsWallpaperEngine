@@ -19,6 +19,8 @@ namespace NTsWallpaperEngine.Signage
         public string DbKey;            // "DB_Primary" | "DB_SemiPrimary" | "DB_SelfSecondary"
         public string NumRaw;           // "44", "101-mp" など
         public int NumValue;            // 数字アニメーション用の数値（数字部分の抽出）
+        public int NumSortValue;        // 並び順用の数値。算術形式（"3x11"→33, "9x9"→81）は計算結果と同値、16進表記（"0xA"→10）はデコード値
+        public bool NumIsHex;           // 16進表記（"0xA" 等）。並び順では通常番号の後ろに別グループで並べる
         public string NumBadge;         // バッジ表記
         public string NameJP;           // 例 "44(シトシ)"
         public string NameEN;           // 例 "44(Folfourn)"
@@ -261,6 +263,8 @@ namespace NTsWallpaperEngine.Signage
                 record.ConceptAgeAboutEN = "";
             }
             record.NumValue = ExtractLeadingNumber(record.NumRaw);
+            record.NumSortValue = ComputeSortNumber(record.NumRaw, out bool numIsHex);
+            record.NumIsHex = numIsHex;
             record.HeightCm = obj["Height_cm"]?.Type == JTokenType.Integer ? (int)obj["Height_cm"] : 0;
             if (obj["Class"] is JArray classes)
                 foreach (var c in classes)
@@ -323,6 +327,55 @@ namespace NTsWallpaperEngine.Signage
             if (string.IsNullOrEmpty(raw)) return 0;
             var m = Regex.Match(raw, @"\d+");
             return m.Success && int.TryParse(m.Value, out int v) ? v : 0;
+        }
+
+        // 16進表記 "0xA" "0xFF" 等の検出（プレフィクス 0x/0X、桁は大文字小文字とも許容）。
+        // ※ "0x11" のような全桁数字の16進も算術形式（0×11）ではなく16進として解釈するため、
+        //    判定は必ず ArithmeticNumPattern より先に行うこと。
+        static readonly Regex HexNumPattern =
+            new Regex(@"^0[xX]([0-9A-Fa-f]+)$", RegexOptions.Compiled);
+
+        // 算術形式 "<整数><演算子><整数>" の検出。
+        // 対応演算子: 乗算 x/×/*、加算 +、除算 /÷。
+        // 減算 "-" は "101-mp" "121-sq" 等のサフィックス規約と衝突するため意図的に非対応。
+        static readonly Regex ArithmeticNumPattern =
+            new Regex(@"^(\d+)\s*([x×*+/÷])\s*(\d+)$", RegexOptions.Compiled);
+
+        /// <summary>
+        /// Num表記から並び順用の数値を求める。
+        /// - 16進表記（"0xA"→10, "0xFF"→255）はデコード値。isHex=true を返し、並び順では最後尾の別グループになる。
+        /// - 算術形式（"3x11"→33, "9x9"→81）は計算結果と同値で扱う。
+        /// - それ以外は先頭の数字列を抽出する（"101-mp" → 101）。
+        /// </summary>
+        static int ComputeSortNumber(string raw, out bool isHex)
+        {
+            isHex = false;
+            if (string.IsNullOrEmpty(raw)) return 0;
+            string trimmed = raw.Trim();
+
+            var hex = HexNumPattern.Match(trimmed);
+            if (hex.Success && int.TryParse(hex.Groups[1].Value,
+                    System.Globalization.NumberStyles.HexNumber,
+                    System.Globalization.CultureInfo.InvariantCulture, out int hv))
+            {
+                isHex = true;
+                return hv;
+            }
+
+            var m = ArithmeticNumPattern.Match(trimmed);
+            if (m.Success
+                && int.TryParse(m.Groups[1].Value, out int lhs)
+                && int.TryParse(m.Groups[3].Value, out int rhs))
+            {
+                switch (m.Groups[2].Value)
+                {
+                    case "x": case "×": case "*": return lhs * rhs;
+                    case "+": return lhs + rhs;
+                    case "/": case "÷": return rhs != 0 ? lhs / rhs : lhs;
+                }
+            }
+
+            return ExtractLeadingNumber(raw);
         }
 
         /// <summary>corefolder画像をTexture2Dとして読み込む（Linux/Windowsスタンドアロン想定）。</summary>

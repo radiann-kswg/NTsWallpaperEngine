@@ -146,7 +146,12 @@ namespace NTsWallpaperEngine.Signage
             _sorted = new List<NtCharacterRecord>(_records);
             _sorted.Sort((a, b) =>
             {
-                int byNum = a.NumValue.CompareTo(b.NumValue);
+                // 16進表記（"0xA" 等）は通常番号の後ろに別グループとして並べる。
+                int byGroup = (a.NumIsHex ? 1 : 0) - (b.NumIsHex ? 1 : 0);
+                if (byGroup != 0) return byGroup;
+                // 算術形式（"3x11"→33 等）は計算結果と同値、16進はデコード値で比較（NumSortValue）。
+                // 同値の場合はNum表記の序数比較で安定化（例: "33" が "3x11" より前）。
+                int byNum = a.NumSortValue.CompareTo(b.NumSortValue);
                 return byNum != 0 ? byNum : string.CompareOrdinal(a.NumRaw, b.NumRaw);
             });
         }
