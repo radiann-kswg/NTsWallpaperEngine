@@ -8,7 +8,8 @@ namespace NTsWallpaperEngine.Signage.EditorTools
 {
     /// <summary>
     /// サブモジュール（正）→ StreamingAssets/CreationsDB（git管理外の生成物）への同期。
-    /// released レコードが参照する corefolder 画像のみをコピーし、未公開画像をビルドへ含めない。
+    /// 表示対象（CreationsDbLoader.ShownProgress）のレコードが参照する corefolder 画像のみをコピーし、
+    /// それ以外の未公開画像をビルドへ含めない。
     /// </summary>
     public static class SignageDbSync
     {
@@ -60,12 +61,12 @@ namespace NTsWallpaperEngine.Signage.EditorTools
                 }
                 File.Copy(jsonPath, Path.Combine(dst, "DataBases", jsonName), true);
 
-                // released レコードが参照する画像だけを抽出コピー
+                // 表示対象レコードが参照する画像だけを抽出コピー
                 var array = JArray.Parse(File.ReadAllText(jsonPath));
                 foreach (var token in array)
                 {
                     if (token is not JObject obj) continue;
-                    if (!string.Equals((string)obj["Progress"], "released", System.StringComparison.OrdinalIgnoreCase))
+                    if (!CreationsDbLoader.ShownProgress.Contains((string)obj["Progress"] ?? ""))
                         continue;
                     if (obj["Images"] is not JObject images) continue;
                     if (images["corefolder_PNGPath"] is not JArray corefolder || corefolder.Count == 0) continue;
@@ -88,7 +89,7 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             }
 
             AssetDatabase.Refresh();
-            Debug.Log($"[Signage] Sync完了: releasedレコード {releasedCount}件 / corefolder画像 {copiedImages}枚 → {dst}");
+            Debug.Log($"[Signage] Sync完了: 表示対象レコード {releasedCount}件 / corefolder画像 {copiedImages}枚 → {dst}");
             return true;
         }
     }

@@ -12,7 +12,8 @@ namespace NTsWallpaperEngine.Signage
     /// データはサブモジュール駆動：
     ///   1. ビルド/同期後: StreamingAssets/CreationsDB/
     ///   2. エディタでの未同期時フォールバック: リポジトリ直下のサブモジュール
-    /// 表示対象は Progress == "released" かつ corefolder 画像を持つレコードのみ（AGENTS.md 5章）。
+    /// 表示対象は Progress が released / released(beta) / stillTentative / unreleased のいずれかで、
+    /// かつ corefolder 画像を持つレコードのみ（AGENTS.md 5章）。
     /// </summary>
     public sealed class NtCharacterRecord
     {
@@ -49,6 +50,16 @@ namespace NTsWallpaperEngine.Signage
         };
 
         public const string SubmoduleRelativeRoot = "100BeautiesLab_CreationsDB/data/Works_NumberTales";
+
+        /// <summary>
+        /// サイネージ表示対象とする Progress 値（AGENTS.md 5章）。
+        /// ローダ本体と SignageDbSync（画像抽出コピー）の両方がこの集合を参照する。
+        /// </summary>
+        public static readonly HashSet<string> ShownProgress =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "released", "released(beta)", "stillTentative", "unreleased",
+            };
 
         /// <summary>外部データパス指定用の環境変数（RPi運用時にOS側の日次pull先を指す）。</summary>
         public const string ExternalRootEnvVar = "NTSWE_CREATIONSDB";
@@ -229,8 +240,8 @@ namespace NTsWallpaperEngine.Signage
 
         static NtCharacterRecord ParseRecord(JObject obj, string dbKey, string root, Dictionary<string, string> classDict)
         {
-            // released のみ（未公開情報をサイネージへ出さない）
-            if (!string.Equals((string)obj["Progress"], "released", StringComparison.OrdinalIgnoreCase))
+            // ShownProgress のみ（それ以外の未公開情報をサイネージへ出さない）
+            if (!ShownProgress.Contains((string)obj["Progress"] ?? ""))
                 return null;
 
             var images = obj["Images"] as JObject;

@@ -14,7 +14,7 @@ Unityメニュー `Signage/Build Linux x64 (RPi Signage)` の実行で生成さ�
 | 起動スクリプト | `scripts/rpi/run-signage.sh`（成果物と同じフォルダに配置する） |
 
 - ビルドは **Linux x64 / Mono バックエンド**（box64互換性のため IL2CPP 不使用）。
-- 創作DBデータはビルド時にサブモジュールから自動同期され、`NTsWallpaperEngine_Data/StreamingAssets/CreationsDB/` に**releasedレコード分のみ**含まれる。RPi側でサブモジュールやネットワークは不要。
+- 創作DBデータはビルド時にサブモジュールから自動同期され、`NTsWallpaperEngine_Data/StreamingAssets/CreationsDB/` に**表示対象レコード（Progress: released / released(beta) / stillTentative / unreleased）分のみ**含まれる。RPi側でサブモジュールやネットワークは不要。
 
 ## 2. OSイメージ側の要件
 

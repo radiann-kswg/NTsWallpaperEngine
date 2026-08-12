@@ -46,7 +46,7 @@
 - クローン直後のセットアップは `scripts/setup-submodule.ps1`（Windows）/ `scripts/setup-submodule.sh`（Linux/macOS）を実行する。sparse設定は `.gitmodules` に保存されないため、**新規クローン時は必ずこのスクリプトを使う**。
 - **DB更新の取得**: Unityメニュー `Signage/Update CreationsDB (git pull + sync)` で、サブモジュールの fetch/pull → `StreamingAssets/CreationsDB` 再同期まで一括実行できる（PATH上のgitが必要）。更新があった場合は親リポジトリのサブモジュール参照（gitlink）を別途コミットすること。
 - サブモジュールは**読み取り専用**。サブモジュール内のファイルを本リポジトリの作業で編集・コミットしない。
-- 表示対象は **`Progress: "released"` かつ corefolder 画像を持つレコードのみ**（未公開情報をサイネージへ出さない）。この条件は `Assets/Scripts/Signage/CreationsDbLoader.cs` が実装しており、緩和は User の明示指示なしに行わない。
+- 表示対象は **`Progress` が `"released"` / `"released(beta)"` / `"stillTentative"` / `"unreleased"` のいずれかで、かつ corefolder 画像を持つレコードのみ**（それ以外の未公開情報をサイネージへ出さない。2026-08-13 に User 指示で `released` のみから緩和）。この条件は `Assets/Scripts/Signage/CreationsDbLoader.cs` の `ShownProgress` が実装しており、変更は User の明示指示なしに行わない。
 
 ## 6. サイネージ実装の構成
 
