@@ -50,6 +50,19 @@ namespace NTsWallpaperEngine.Signage.EditorTools
                 File.Copy(dictSrc, Path.Combine(dst, "Dictionaries", dictName), true);
             }
 
+            // グローバルクラス辞書（data/Dictionaries/。レゾンデイトルカンパニー / シンフォニー.XVI 所属個体用）
+            foreach (string dictName in CreationsDbLoader.GlobalClassDictionaryFiles)
+            {
+                string dictSrc = Path.GetFullPath(Path.Combine(src, "..", "Dictionaries", dictName));
+                if (!File.Exists(dictSrc))
+                {
+                    Debug.LogWarning($"[Signage] グローバル辞書が無い: {dictSrc}（scripts/setup-submodule を再実行して sparse に /data/Dictionaries を追加）");
+                    continue;
+                }
+                Directory.CreateDirectory(Path.Combine(dst, "GlobalDictionaries"));
+                File.Copy(dictSrc, Path.Combine(dst, "GlobalDictionaries", dictName), true);
+            }
+
             int copiedImages = 0, releasedCount = 0;
             foreach (var (dbKey, jsonName) in Sources)
             {

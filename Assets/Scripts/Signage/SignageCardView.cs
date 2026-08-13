@@ -55,7 +55,10 @@ namespace NTsWallpaperEngine.Signage
         [Range(0f, 1f)] public float bigNumberAlpha = 0.42f;
         [Range(0f, 1f)] public float backgroundPastel = 0.62f;
 
-        const string ScramblePool = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ#-+.[]";
+        // スクランブルは文字種を保存する: 数字→ランダム数字 / 英字（合字・アクセント含む）→ランダム英字（大小維持）/ 記号・空白→固定
+        const string ScrambleDigits = "0123456789";
+        const string ScrambleUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const string ScrambleLower = "abcdefghijklmnopqrstuvwxyz";
 
         static readonly Regex NumTokenRegex = new Regex(@"#[\w\.\-]+");
 
@@ -71,6 +74,7 @@ namespace NTsWallpaperEngine.Signage
         // 文字アニメーションの確定文字列（スクランブル対象）
         string _targetModelNumber = "", _targetNameEn = "", _targetModelNameEn = "", _targetProfile = "", _targetClass = "";
         float _textProgress = 1f;
+        float _bigNumProgress = 1f;  // 大型番号専用の進行度（フェードアウト時は番号だけスクランブルするため分離）
 
         public NtCharacterRecord Current => _current;
 
@@ -180,7 +184,7 @@ namespace NTsWallpaperEngine.Signage
             // 数字を持たない特殊個体（% や ∞ など）はカウント演出なしで全体をスクランブル→確定
             if (!_numericNum)
             {
-                if (bigNumberText) bigNumberText.text = ScrambleToString(_numDisplayFinal, _textProgress);
+                if (bigNumberText) bigNumberText.text = ScrambleToString(_numDisplayFinal, _bigNumProgress);
                 if (formalNameText) formalNameText.text = ScrambleToString(_formalTemplate, _textProgress);
                 return;
             }
@@ -190,7 +194,7 @@ namespace NTsWallpaperEngine.Signage
             string digits = v.ToString("D" + _numDigits);
 
             // 大型番号: 数字はカウント、数式部分（"3x11" の "x11"）はスクランブル→確定
-            if (bigNumberText) bigNumberText.text = digits + ScrambleToString(_numSuffix, _textProgress);
+            if (bigNumberText) bigNumberText.text = digits + ScrambleToString(_numSuffix, _bigNumProgress);
             if (formalNameText)
             {
                 // FormalName_EN の「#番号」トークン（最初の1つ）はカウント数字、前後の文字列はスクランブル→確定
@@ -216,12 +220,51 @@ namespace NTsWallpaperEngine.Signage
         public void SetTextProgress(float progress)
         {
             _textProgress = Mathf.Clamp01(progress);
+            _bigNumProgress = _textProgress; // フェードイン時は全対象が同じ進行度
             ApplyScramble(modelNumberText, _targetModelNumber, _textProgress);
             ApplyScramble(nameEnText, _targetNameEn, _textProgress);
             ApplyScramble(modelNameEnText, _targetModelNameEn, _textProgress);
-            ApplyScramble(classText, _targetClass, _textProgress);
-            ApplyScramble(profileText, _targetProfile, _textProgress);
+            ApplyScrambleValues(classText, _targetClass, _textProgress);
+            ApplyScrambleValues(profileText, _targetProfile, _textProgress);
             RenderNumberTexts(); // 大型番号suffix・正式名称の英字部分も同じ進行度で確定させる
+        }
+
+        /// <summary>
+        /// フェードアウト用: 大型番号だけをスクランブルさせる（他のテキストは確定表示のまま）。
+        /// </summary>
+        public void SetBigNumberScramble(float progress)
+        {
+            _bigNumProgress = Mathf.Clamp01(progress);
+            RenderNumberTexts();
+        }
+
+        /// <summary>
+        /// プロフィール用: 各行の「ラベル: 」は常に確定表示し、値の部分（DBの値）だけをスクランブル→確定させる。
+        /// </summary>
+        static void ApplyScrambleValues(TMP_Text text, string target, float progress)
+        {
+            if (!text) return;
+            if (string.IsNullOrEmpty(target)) { text.text = ""; return; }
+            if (progress >= 1f) { text.text = target; return; }
+
+            var lines = target.Split('\n');
+            var sb = new StringBuilder(target.Length);
+            for (int li = 0; li < lines.Length; li++)
+            {
+                string line = lines[li];
+                int sep = line.IndexOf(": ", System.StringComparison.Ordinal);
+                if (sep < 0)
+                {
+                    AppendScrambled(sb, line, progress);
+                }
+                else
+                {
+                    sb.Append(line, 0, sep + 2);                      // ラベルは固定
+                    AppendScrambled(sb, line.Substring(sep + 2), progress); // 値のみアニメーション
+                }
+                if (li < lines.Length - 1) sb.Append('\n');
+            }
+            text.text = sb.ToString();
         }
 
         /// <summary>文字列全体をスクランブル進行度つきで返す（部分埋め込み用）。</summary>
@@ -269,7 +312,11 @@ namespace NTsWallpaperEngine.Signage
                 }
 
                 if (visibleIndex < revealed || char.IsWhiteSpace(c)) sb.Append(c);
-                else sb.Append(ScramblePool[Random.Range(0, ScramblePool.Length)]);
+                else if (char.IsDigit(c)) sb.Append(ScrambleDigits[Random.Range(0, ScrambleDigits.Length)]);
+                else if (char.IsLetter(c)) sb.Append(char.IsLower(c)
+                    ? ScrambleLower[Random.Range(0, ScrambleLower.Length)]
+                    : ScrambleUpper[Random.Range(0, ScrambleUpper.Length)]);
+                else sb.Append(c); // 記号は固定表示
                 visibleIndex++;
             }
         }

@@ -9,6 +9,7 @@ Set-Location 100BeautiesLab_CreationsDB
 git sparse-checkout set --no-cone `
   '/*.md' `
   '/LICENCE' `
+  '/data/Dictionaries/**' `
   '/data/Works_NumberTales/DataBases/**' `
   '/data/Works_NumberTales/Dictionaries/**' `
   '/data/Works_NumberTales/RoleplayPrompts/**' `

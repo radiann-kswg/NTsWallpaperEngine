@@ -174,7 +174,7 @@ namespace NTsWallpaperEngine.Signage
             if (_isAnimating && !onStarting) yield break;
             _isAnimating = true;
 
-            // フェードアウト（数字はカウントアップしながら消える）
+            // フェードアウト（数字はカウントアップしながら消える。スクランブルは大型番号のみ）
             if (!onStarting && view.Current != null)
             {
                 int baseNum = view.Current.NumValue;
@@ -182,6 +182,7 @@ namespace NTsWallpaperEngine.Signage
                 {
                     int shown = baseNum + Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - _alpha, acceleration));
                     view.SetAnimatedNumber(shown);
+                    view.SetBigNumberScramble(_alpha);
                     view.SetAlpha(_alpha);
                     _alpha -= Time.deltaTime / animationTime;
                     yield return null;

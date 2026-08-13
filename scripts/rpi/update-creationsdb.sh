@@ -12,20 +12,22 @@ DEST="${CREATIONSDB_REPO_DIR:-/opt/ntswallpaper/creationsdb}"
 if [ ! -d "$DEST/.git" ]; then
   echo "[update-creationsdb] initial sparse clone -> $DEST"
   git clone --filter=blob:none --sparse --depth 1 -b "$BRANCH" "$REPO_URL" "$DEST"
-  cd "$DEST"
-  git sparse-checkout set --no-cone \
-    '/*.md' \
-    '/LICENCE' \
-    '/data/Works_NumberTales/DataBases/**' \
-    '/data/Works_NumberTales/Dictionaries/**' \
-    '/data/Works_NumberTales/Images/DB_Primary/corefolder/**' \
-    '/data/Works_NumberTales/Images/DB_SemiPrimary/corefolder/**' \
-    '/data/Works_NumberTales/Images/DB_SelfSecondary/corefolder/**'
-else
-  cd "$DEST"
-  echo "[update-creationsdb] pull $BRANCH"
-  git fetch origin "$BRANCH"
-  git pull origin "$BRANCH"
 fi
+cd "$DEST"
+
+# sparse設定は毎回適用する（既存クローンにも新パターンを反映させるため冪等に実行）
+git sparse-checkout set --no-cone \
+  '/*.md' \
+  '/LICENCE' \
+  '/data/Dictionaries/**' \
+  '/data/Works_NumberTales/DataBases/**' \
+  '/data/Works_NumberTales/Dictionaries/**' \
+  '/data/Works_NumberTales/Images/DB_Primary/corefolder/**' \
+  '/data/Works_NumberTales/Images/DB_SemiPrimary/corefolder/**' \
+  '/data/Works_NumberTales/Images/DB_SelfSecondary/corefolder/**'
+
+echo "[update-creationsdb] pull $BRANCH"
+git fetch origin "$BRANCH"
+git pull origin "$BRANCH"
 
 echo "[update-creationsdb] done: $(git rev-parse --short HEAD)"

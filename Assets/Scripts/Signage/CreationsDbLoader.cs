@@ -210,32 +210,53 @@ namespace NTsWallpaperEngine.Signage
             "dict_Triples.json",
         };
 
+        /// <summary>
+        /// グローバルクラス辞書（作品共通: data/Dictionaries/）。
+        /// レゾンデイトルカンパニー / シンフォニー.XVI 所属個体のクラスはこちらに収録されている。
+        /// 実体は root の一つ上の Dictionaries/（サブモジュール・Pi外部クローン）または
+        /// root/GlobalDictionaries/（StreamingAssets同期後）から読む。
+        /// </summary>
+        public static readonly string[] GlobalClassDictionaryFiles =
+        {
+            "dict_RaisondetreCompany.json",
+            "dict_SymphonyXVI.json",
+        };
+
         /// <summary>クラス辞書群（Class → Class_EN）を読み込んで併合する。無ければ空辞書。</summary>
         static Dictionary<string, string> LoadClassDictionary(string root)
         {
             var dict = new Dictionary<string, string>();
             foreach (string fileName in ClassDictionaryFiles)
+                MergeClassDictionary(dict, Path.Combine(root, "Dictionaries", fileName), fileName);
+            foreach (string fileName in GlobalClassDictionaryFiles)
             {
-                string path = Path.Combine(root, "Dictionaries", fileName);
-                if (!File.Exists(path)) continue;
-                try
-                {
-                    foreach (var token in JArray.Parse(File.ReadAllText(path)))
-                    {
-                        if (token is not JObject o) continue;
-                        string jp = (string)o["Class"];
-                        string en = (string)o["Class_EN"];
-                        // 先勝ち（万一キーが重複した場合は先に読んだ辞書を正とする）
-                        if (!string.IsNullOrEmpty(jp) && !string.IsNullOrEmpty(en) && !dict.ContainsKey(jp))
-                            dict[jp] = en;
-                    }
-                }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"[Signage] {fileName} のパースに失敗: {e.Message}");
-                }
+                string path = Path.Combine(root, "GlobalDictionaries", fileName);            // StreamingAssets同期後
+                if (!File.Exists(path))
+                    path = Path.Combine(root, "..", "Dictionaries", fileName);               // サブモジュール/外部クローン直読み
+                MergeClassDictionary(dict, path, fileName);
             }
             return dict;
+        }
+
+        static void MergeClassDictionary(Dictionary<string, string> dict, string path, string fileName)
+        {
+            if (!File.Exists(path)) return;
+            try
+            {
+                foreach (var token in JArray.Parse(File.ReadAllText(path)))
+                {
+                    if (token is not JObject o) continue;
+                    string jp = (string)o["Class"];
+                    string en = (string)o["Class_EN"];
+                    // 先勝ち（万一キーが重複した場合は先に読んだ辞書を正とする）
+                    if (!string.IsNullOrEmpty(jp) && !string.IsNullOrEmpty(en) && !dict.ContainsKey(jp))
+                        dict[jp] = en;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[Signage] {fileName} のパースに失敗: {e.Message}");
+            }
         }
 
         static NtCharacterRecord ParseRecord(JObject obj, string dbKey, string root, Dictionary<string, string> classDict)
