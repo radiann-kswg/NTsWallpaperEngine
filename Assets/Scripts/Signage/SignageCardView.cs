@@ -30,7 +30,7 @@ namespace NTsWallpaperEngine.Signage
 
         [Header("Header (top-right)")]
         public TMP_Text modelNumberText;   // 例 "APHR-NT IV+[R]IV"
-        public TMP_Text formalNameText;    // 例 "NUMBERTALES #044"（#部分が数字アニメ対象）
+        public TMP_Text formalNameText;    // 例 "NUMBERTALES #044"（FormalName_EN原文のまま表示。スクランブル演出のみ）
         public TMP_Text nameEnText;        // 例 "FOLFOURN"
 
         [Header("Profile (bottom-right)")]
@@ -60,11 +60,9 @@ namespace NTsWallpaperEngine.Signage
         const string ScrambleUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         const string ScrambleLower = "abcdefghijklmnopqrstuvwxyz";
 
-        static readonly Regex NumTokenRegex = new Regex(@"#[\w\.\-]+");
-
         NtCharacterRecord _current;
         Texture2D _texture;
-        string _formalTemplate = "NUMBERTALES";  // FormalName_EN全文（#番号トークンにアニメ数字を埋め込む）
+        string _formalTemplate = "NUMBERTALES";  // FormalName_EN全文（原文のまま表示。複数行は実改行）
         int _numDigits = 2;
         bool _numericNum = true;     // Numが数字を持つか（%や∞などの特殊個体はfalse）
         string _numDisplayFinal = ""; // 大型番号の確定表記。数値・数式部分のみ（例 "111", "3x11"）。無ければ Num_Badge 全文
@@ -90,10 +88,10 @@ namespace NTsWallpaperEngine.Signage
             _targetClass = BuildClassBlock(record);
             _targetProfile = BuildProfile(record);
             if (classDividerLine) classDividerLine.gameObject.SetActive(_targetClass.Length > 0);
-            // 正式名称は原文表記（小文字あり）のまま使用
+            // 正式名称は原文表記のまま使用（"#216-KZ" 等のトークンも丸めない）。複数行は実改行として表示する
             _formalTemplate = string.IsNullOrEmpty(record.FormalNameEN)
                 ? "NumberTales"
-                : record.FormalNameEN.Replace("\r", "").Replace("\n", " ").Trim();
+                : record.FormalNameEN.Replace("\r", "").Trim();
             // 大型番号は数値・数式部分（[0-9x]{1,4} の最初の一致）のみを表示する:
             //   "111-mp"→"111" / "2-alt"→"2" / "222A"→"222" / "3x11"→"3x11" / "000"→"000"
             //   suffix（"-mp", "A", "-alt" 等）は表示しない。
@@ -170,8 +168,8 @@ namespace NTsWallpaperEngine.Signage
         }
 
         /// <summary>
-        /// 数字アニメーション中の表示値を反映（大型番号 と "NUMBERTALES #044" の両方）。
-        /// 数字部分はカウント演出、数式部分・正式名称の文字列はスクランブル演出で表示する。
+        /// 数字アニメーション中の表示値を反映（大型番号のみ。正式名称は SetTextProgress の通常スクランブル対象）。
+        /// 数字部分はカウント演出、数式部分はスクランブル演出で表示する。
         /// </summary>
         public void SetAnimatedNumber(int shownValue)
         {
@@ -181,11 +179,12 @@ namespace NTsWallpaperEngine.Signage
 
         void RenderNumberTexts()
         {
+            if (!bigNumberText) return;
+
             // 数字を持たない特殊個体（% や ∞ など）はカウント演出なしで全体をスクランブル→確定
             if (!_numericNum)
             {
-                if (bigNumberText) bigNumberText.text = ScrambleToString(_numDisplayFinal, _bigNumProgress);
-                if (formalNameText) formalNameText.text = ScrambleToString(_formalTemplate, _textProgress);
+                bigNumberText.text = ScrambleToString(_numDisplayFinal, _bigNumProgress);
                 return;
             }
 
@@ -194,17 +193,7 @@ namespace NTsWallpaperEngine.Signage
             string digits = v.ToString("D" + _numDigits);
 
             // 大型番号: 数字はカウント、数式部分（"3x11" の "x11"）はスクランブル→確定
-            if (bigNumberText) bigNumberText.text = digits + ScrambleToString(_numSuffix, _bigNumProgress);
-            if (formalNameText)
-            {
-                // FormalName_EN の「#番号」トークン（最初の1つ）はカウント数字、前後の文字列はスクランブル→確定
-                var m = NumTokenRegex.Match(_formalTemplate);
-                formalNameText.text = m.Success
-                    ? ScrambleToString(_formalTemplate.Substring(0, m.Index), _textProgress)
-                      + "#" + digits
-                      + ScrambleToString(_formalTemplate.Substring(m.Index + m.Length), _textProgress)
-                    : $"{ScrambleToString(_formalTemplate, _textProgress)} #{digits}";
-            }
+            bigNumberText.text = digits + ScrambleToString(_numSuffix, _bigNumProgress);
         }
 
         /// <summary>カウント演出の確定後に呼ぶ。大型番号を確定表記（数値・数式のみ。例 "111", "3x11"）で着地させる。</summary>
@@ -222,6 +211,7 @@ namespace NTsWallpaperEngine.Signage
             _textProgress = Mathf.Clamp01(progress);
             _bigNumProgress = _textProgress; // フェードイン時は全対象が同じ進行度
             ApplyScramble(modelNumberText, _targetModelNumber, _textProgress);
+            ApplyScramble(formalNameText, _formalTemplate, _textProgress); // FormalName_EN原文（複数行は実改行）
             ApplyScramble(nameEnText, _targetNameEn, _textProgress);
             ApplyScramble(modelNameEnText, _targetModelNameEn, _textProgress);
             ApplyScrambleValues(classText, _targetClass, _textProgress);
