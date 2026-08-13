@@ -19,8 +19,8 @@ namespace NTsWallpaperEngine.Signage
         [SerializeField] int numAnimDuration = 300;
         [SerializeField] float acceleration = 2.65f;
         [SerializeField] float animationTime = 1.4f;
-        [Tooltip("文字スクランブルがフェードインより先に確定する倍率")]
-        [SerializeField] float textAnimSpeed = 1.35f;
+        [Tooltip("文字スクランブルの確定速度倍率。1未満にするとフェード完了後もスクランブルが継続し、全文の演出が見える")]
+        [SerializeField] float textAnimSpeed = 0.6f;
 
         public enum PlaybackMode
         {
@@ -199,21 +199,34 @@ namespace NTsWallpaperEngine.Signage
             view.SetAlpha(0f);
 
             // フェードイン（数字はカウントダウンで収束、文字はスクランブル→確定）
+            // 文字スクランブルは経過時間ベースで進行し、textAnimSpeed < 1 の場合は
+            // フェード完了後も継続して全文の演出を見せる。
             int target = _next.NumValue;
+            float textDuration = animationTime / Mathf.Max(0.05f, textAnimSpeed);
+            float elapsed = 0f;
             while (_alpha < 1f)
             {
                 int shown = target - Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - _alpha, acceleration));
                 view.SetAnimatedNumber(shown);
-                view.SetTextProgress(_alpha * textAnimSpeed);
+                view.SetTextProgress(elapsed / textDuration);
                 view.SetAlpha(_alpha);
+                elapsed += Time.deltaTime;
                 _alpha += Time.deltaTime / animationTime;
                 yield return null;
             }
             _alpha = 1f;
-            view.SetAnimatedNumber(target);
-            view.SetNumberFinal(); // バッジ表記（例 "222A"）へ着地
-            view.SetTextProgress(1f);
             view.SetAlpha(1f);
+            view.SetAnimatedNumber(target);
+
+            // 残りの文字スクランブルを完走させる
+            while (elapsed < textDuration)
+            {
+                view.SetTextProgress(elapsed / textDuration);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            view.SetTextProgress(1f);
+            view.SetNumberFinal(); // 大型番号を原文表記（例 "222A"）へ着地
             _isAnimating = false;
         }
 

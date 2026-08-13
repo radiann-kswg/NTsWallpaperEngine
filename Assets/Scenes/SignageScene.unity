@@ -1667,7 +1667,7 @@ MonoBehaviour:
   numAnimDuration: 300
   acceleration: 2.65
   animationTime: 1.4
-  textAnimSpeed: 1.35
+  textAnimSpeed: 0.6
   switchIntervalSeconds: 30
   dotCellSize: 56
   dotRadius: 0.24

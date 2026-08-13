@@ -206,8 +206,8 @@ namespace NTsWallpaperEngine.Signage
             ApplyScramble(modelNumberText, _targetModelNumber, _textProgress);
             ApplyScramble(nameEnText, _targetNameEn, _textProgress);
             ApplyScramble(modelNameEnText, _targetModelNameEn, _textProgress);
-            ApplyScrambleValues(classText, _targetClass, _textProgress);
-            ApplyScrambleValues(profileText, _targetProfile, _textProgress);
+            ApplyScramble(classText, _targetClass, _textProgress);
+            ApplyScramble(profileText, _targetProfile, _textProgress);
             RenderNumberTexts(); // 大型番号suffix・正式名称の英字部分も同じ進行度で確定させる
         }
 
@@ -219,35 +219,6 @@ namespace NTsWallpaperEngine.Signage
             var sb = new StringBuilder(target.Length);
             AppendScrambled(sb, target, progress);
             return sb.ToString();
-        }
-
-        /// <summary>
-        /// プロフィール用: 各行の「ラベル: 」は常に確定表示し、値の部分（DBの値）だけをスクランブル→確定させる。
-        /// </summary>
-        static void ApplyScrambleValues(TMP_Text text, string target, float progress)
-        {
-            if (!text) return;
-            if (string.IsNullOrEmpty(target)) { text.text = ""; return; }
-            if (progress >= 1f) { text.text = target; return; }
-
-            var lines = target.Split('\n');
-            var sb = new StringBuilder(target.Length);
-            for (int li = 0; li < lines.Length; li++)
-            {
-                string line = lines[li];
-                int sep = line.IndexOf(": ", System.StringComparison.Ordinal);
-                if (sep < 0)
-                {
-                    AppendScrambled(sb, line, progress);
-                }
-                else
-                {
-                    sb.Append(line, 0, sep + 2);                      // ラベルは固定
-                    AppendScrambled(sb, line.Substring(sep + 2), progress); // 値のみアニメーション
-                }
-                if (li < lines.Length - 1) sb.Append('\n');
-            }
-            text.text = sb.ToString();
         }
 
         /// <summary>
