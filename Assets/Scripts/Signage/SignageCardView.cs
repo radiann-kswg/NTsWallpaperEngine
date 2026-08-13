@@ -64,9 +64,9 @@ namespace NTsWallpaperEngine.Signage
         string _formalTemplate = "NUMBERTALES";  // FormalName_EN全文（#番号トークンにアニメ数字を埋め込む）
         int _numDigits = 2;
         bool _numericNum = true;     // Numが数字を持つか（%や∞などの特殊個体はfalse）
-        string _rawNumDisplay = "";  // Num の原文表記（非数値個体および確定表示用。例 "222A", "2-alt", "%"）
-        string _numSuffix = "";      // 先頭数字より後ろの部分（例 "A", "-alt", "x11"）。スクランブル演出対象
-        int _lastShownValue;         // カウント演出中の直近表示値（SetTextProgress からの再描画用）
+        string _numDisplayFinal = ""; // 大型番号の確定表記。数値・数式部分のみ（例 "111", "3x11"）。無ければ Num_Badge 全文
+        string _numSuffix = "";       // 確定表記のうち先頭数字より後ろの数式部分（例 "3x11"→"x11"）。スクランブル演出対象
+        int _lastShownValue;          // カウント演出中の直近表示値（SetTextProgress からの再描画用）
 
         // 文字アニメーションの確定文字列（スクランブル対象）
         string _targetModelNumber = "", _targetNameEn = "", _targetModelNameEn = "", _targetProfile = "", _targetClass = "";
@@ -90,14 +90,27 @@ namespace NTsWallpaperEngine.Signage
             _formalTemplate = string.IsNullOrEmpty(record.FormalNameEN)
                 ? "NumberTales"
                 : record.FormalNameEN.Replace("\r", "").Replace("\n", " ").Trim();
-            // Numの先頭数字のみを表示（"2-alt"→2, "10-alt"→10, "222-mp"→222 のようにsuffixは除去）
-            var numMatch = Regex.Match(record.NumRaw ?? "", @"^\d+");
-            _numericNum = numMatch.Success;
-            _rawNumDisplay = record.NumRaw ?? "";
-            _numDigits = _numericNum ? numMatch.Value.Length : 1;
-            // 先頭数字より後ろ（"222A"→"A", "2-alt"→"-alt", "3x11"→"x11"）はスクランブル演出で表示し、
-            // 確定後は原文表記へ着地する（英字にもテキストアニメーションを適用）
-            _numSuffix = _numericNum ? _rawNumDisplay.Substring(numMatch.Value.Length) : "";
+            // 大型番号は数値・数式部分（[0-9x]{1,4} の最初の一致）のみを表示する:
+            //   "111-mp"→"111" / "2-alt"→"2" / "222A"→"222" / "3x11"→"3x11" / "000"→"000"
+            //   suffix（"-mp", "A", "-alt" 等）は表示しない。
+            // 一致が無い特殊個体（"%", "∞" 等）は Num_Badge 全文を使用する。
+            var disp = Regex.Match(record.NumRaw ?? "", "[0-9x]{1,4}");
+            if (disp.Success)
+            {
+                _numDisplayFinal = disp.Value;
+                var digits = Regex.Match(disp.Value, @"^\d+");
+                _numericNum = digits.Success;
+                _numDigits = _numericNum ? digits.Value.Length : 1;
+                // 数字に続く数式部分（"3x11"→"x11"）だけがスクランブル演出の対象
+                _numSuffix = disp.Value.Substring(digits.Value.Length);
+            }
+            else
+            {
+                _numDisplayFinal = string.IsNullOrEmpty(record.NumBadge) ? (record.NumRaw ?? "") : record.NumBadge;
+                _numericNum = false;
+                _numDigits = 1;
+                _numSuffix = "";
+            }
 
             SetTexture(texture);
             SetAnimatedNumber(record.NumValue);
@@ -154,7 +167,7 @@ namespace NTsWallpaperEngine.Signage
 
         /// <summary>
         /// 数字アニメーション中の表示値を反映（大型番号 と "NUMBERTALES #044" の両方）。
-        /// 数字部分はカウント演出、英字部分（suffixや正式名称の文字列）はスクランブル演出で表示する。
+        /// 数字部分はカウント演出、数式部分・正式名称の文字列はスクランブル演出で表示する。
         /// </summary>
         public void SetAnimatedNumber(int shownValue)
         {
@@ -167,7 +180,7 @@ namespace NTsWallpaperEngine.Signage
             // 数字を持たない特殊個体（% や ∞ など）はカウント演出なしで全体をスクランブル→確定
             if (!_numericNum)
             {
-                if (bigNumberText) bigNumberText.text = ScrambleToString(_rawNumDisplay, _textProgress);
+                if (bigNumberText) bigNumberText.text = ScrambleToString(_numDisplayFinal, _textProgress);
                 if (formalNameText) formalNameText.text = ScrambleToString(_formalTemplate, _textProgress);
                 return;
             }
@@ -176,7 +189,7 @@ namespace NTsWallpaperEngine.Signage
             int v = ((_lastShownValue % modulo) + modulo) % modulo;
             string digits = v.ToString("D" + _numDigits);
 
-            // 大型番号: 数字はカウント、英字suffix（"A" / "-alt" 等）はスクランブル→確定
+            // 大型番号: 数字はカウント、数式部分（"3x11" の "x11"）はスクランブル→確定
             if (bigNumberText) bigNumberText.text = digits + ScrambleToString(_numSuffix, _textProgress);
             if (formalNameText)
             {
@@ -190,11 +203,11 @@ namespace NTsWallpaperEngine.Signage
             }
         }
 
-        /// <summary>カウント演出の確定後に呼ぶ。大型番号を原文表記（例 "222A", "2-alt"）で着地させる。</summary>
+        /// <summary>カウント演出の確定後に呼ぶ。大型番号を確定表記（数値・数式のみ。例 "111", "3x11"）で着地させる。</summary>
         public void SetNumberFinal()
         {
-            if (bigNumberText && !string.IsNullOrEmpty(_rawNumDisplay))
-                bigNumberText.text = _rawNumDisplay;
+            if (bigNumberText && !string.IsNullOrEmpty(_numDisplayFinal))
+                bigNumberText.text = _numDisplayFinal;
         }
 
         /// <summary>
