@@ -34,6 +34,10 @@ https://github.com/radiann-kswg/PenchantManufacture_ImageAssets
 ・.otfファイル
 
 ＜更新履歴＞
+Ver.3.3-beta: 2026/08/15
+・代表的な科学記号と数式記号 追加
+・`i`,`j`,`r`,`ν`,上付き文字,半角記号などグリフの大幅改善
+
 Ver.3.2-beta: 2026/08/06
 ・アクセント記号付きアルファベット 追加
 ・代表的な合字 追加＆`ß`のグリフ変更
