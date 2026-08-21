@@ -19,6 +19,25 @@ namespace NTsWallpaperEngine.Signage.EditorTools
         public const string PenchantAssetPath = OutputDir + "/PenchantManufacture SDF.asset";
         public const string SourceHanAssetPath = OutputDir + "/SourceHanSans-Medium SDF.asset";
 
+        /// <summary>
+        /// フォント差し替え時の定型: PenchantManufacture SDF の動的アトラスキャッシュを全消去する。
+        /// （旧グリフのメトリクス残留防止。バッチモードの -executeMethod からも呼べる）
+        /// </summary>
+        [MenuItem("Signage/Clear Penchant Dynamic Atlas")]
+        public static void ClearPenchantAtlas()
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(PenchantAssetPath);
+            if (!asset)
+            {
+                Debug.LogError("[Signage] SDF assetが見つからない: " + PenchantAssetPath);
+                return;
+            }
+            asset.ClearFontAssetData(true);
+            EditorUtility.SetDirty(asset);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[Signage] 動的アトラスをクリア: " + PenchantAssetPath);
+        }
+
         [MenuItem("Signage/Generate TMP Font Assets")]
         public static void GenerateMenu()
         {

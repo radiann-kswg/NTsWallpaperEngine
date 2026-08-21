@@ -55,10 +55,19 @@ namespace NTsWallpaperEngine.Signage
         [Range(0f, 1f)] public float bigNumberAlpha = 0.42f;
         [Range(0f, 1f)] public float backgroundPastel = 0.62f;
 
-        // スクランブルは文字種を保存する: 数字→ランダム数字 / 英字（合字・アクセント含む）→ランダム英字（大小維持）/ 記号・空白→固定
+        // スクランブルは文字種を保存する: 数字→ランダム数字 / 英字（合字・アクセント含む）→ランダム英字（大小維持）
+        // / ローマ数字グリフ→ランダムローマ数字 / 記号・空白→固定
         const string ScrambleDigits = "0123456789";
         const string ScrambleUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         const string ScrambleLower = "abcdefghijklmnopqrstuvwxyz";
+
+        // ローマ数字グリフ（PenchantManufacture v4.0-beta 収録: Ⅰ〜Ⅻ / ⅰ〜ⅻ）
+        const char RomanUpperBase = 'Ⅰ'; // Ⅰ
+        const char RomanLowerBase = 'ⅰ'; // ⅰ
+        const int RomanComposedMax = 12;      // 合成済みグリフの上限（Ⅻ）
+
+        static bool IsRomanUpper(char c) => c >= 'Ⅰ' && c <= 'Ⅻ';
+        static bool IsRomanLower(char c) => c >= 'ⅰ' && c <= 'ⅻ';
 
         NtCharacterRecord _current;
         Texture2D _texture;
@@ -81,8 +90,9 @@ namespace NTsWallpaperEngine.Signage
         {
             _current = record;
 
-            // 複数行の型番は1行に連結（表記は原文のまま・大文字化しない）
-            _targetModelNumber = (record.ModelNumber ?? "").Replace("\r", "").Replace("\n", " / ");
+            // 複数行の型番は1行に連結し、ローマ数字表記をフォント収録のローマ数字グリフへ差し替える
+            // （それ以外の表記は原文のまま・大文字化しない）
+            _targetModelNumber = ConvertRomanGlyphs((record.ModelNumber ?? "").Replace("\r", "").Replace("\n", " / "));
             _targetNameEn = FormatNameEnMultiline(record.NameEN);
             _targetModelNameEn = (record.ModelNameEN ?? "").Replace("\r", "").Replace("\n", " / ");
             _targetClass = BuildClassBlock(record);
@@ -303,6 +313,10 @@ namespace NTsWallpaperEngine.Signage
 
                 if (visibleIndex < revealed || char.IsWhiteSpace(c)) sb.Append(c);
                 else if (char.IsDigit(c)) sb.Append(ScrambleDigits[Random.Range(0, ScrambleDigits.Length)]);
+                // ローマ数字グリフは英字ではなくローマ数字（Ⅰ〜Ⅻ / ⅰ〜ⅻ）として再生する
+                // （char.IsLetter は U+2160系(Nl) にも true を返すため、英字判定より先に分岐）
+                else if (IsRomanUpper(c)) sb.Append((char)(RomanUpperBase + Random.Range(0, RomanComposedMax)));
+                else if (IsRomanLower(c)) sb.Append((char)(RomanLowerBase + Random.Range(0, RomanComposedMax)));
                 else if (char.IsLetter(c)) sb.Append(char.IsLower(c)
                     ? ScrambleLower[Random.Range(0, ScrambleLower.Length)]
                     : ScrambleUpper[Random.Range(0, ScrambleUpper.Length)]);
@@ -390,6 +404,54 @@ namespace NTsWallpaperEngine.Signage
         }
 
         // ---- 表記整形 ----
+
+        static readonly Regex RomanToken = new Regex(@"\b[IVX]+\b");
+
+        /// <summary>
+        /// 文字列中のASCIIローマ数字表記（I/V/X の正規表記トークン）を、
+        /// PenchantManufacture v4.0-beta 収録のローマ数字グリフへ差し替える。
+        ///   1〜12 → 合成済みグリフ1文字（Ⅰ〜Ⅻ） / 13以上 → Ⅹ… + 合成済み1〜9（例 24→ⅩⅩⅣ）
+        /// 正規表記でないトークン（"VV" 等）や範囲外は原文のまま残す。
+        /// </summary>
+        public static string ConvertRomanGlyphs(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            return RomanToken.Replace(s, m =>
+            {
+                int v = ParseRoman(m.Value);
+                if (v < 1 || v > 39 || ToRomanAscii(v) != m.Value) return m.Value; // 正規表記のみ変換
+                if (v <= RomanComposedMax) return ((char)(RomanUpperBase + v - 1)).ToString();
+                var sb = new StringBuilder();
+                while (v >= 10) { sb.Append('Ⅹ'); v -= 10; }
+                if (v > 0) sb.Append((char)(RomanUpperBase + v - 1));
+                return sb.ToString();
+            });
+        }
+
+        /// <summary>I/V/X のみのローマ数字を数値化（減算則対応。妥当性はToRomanAsciiとの往復比較で判定）。</summary>
+        static int ParseRoman(string s)
+        {
+            int total = 0, prev = 0;
+            for (int i = s.Length - 1; i >= 0; i--)
+            {
+                int v = s[i] == 'I' ? 1 : s[i] == 'V' ? 5 : 10;
+                total += v < prev ? -v : v;
+                prev = v;
+            }
+            return total;
+        }
+
+        /// <summary>1〜39をASCII正規表記のローマ数字にする（往復比較用）。</summary>
+        static string ToRomanAscii(int v)
+        {
+            var sb = new StringBuilder();
+            while (v >= 10) { sb.Append('X'); v -= 10; }
+            if (v == 9) { sb.Append("IX"); return sb.ToString(); }
+            if (v >= 5) { sb.Append('V'); v -= 5; }
+            if (v == 4) { sb.Append("IV"); return sb.ToString(); }
+            sb.Append('I', v);
+            return sb.ToString();
+        }
 
         /// <summary>
         /// Name_EN を全文表示用に整形する。数字有り/無しの名前をそのまま保持し、
