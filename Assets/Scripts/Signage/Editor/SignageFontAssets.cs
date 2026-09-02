@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using TMPro;
 using UnityEditor;
@@ -18,6 +19,52 @@ namespace NTsWallpaperEngine.Signage.EditorTools
         public const string SourceHanSourcePath = "Assets/Fonts/source-han-sans-release/OTF/Japanese/SourceHanSans-Medium.otf";
         public const string PenchantAssetPath = OutputDir + "/PenchantManufacture SDF.asset";
         public const string SourceHanAssetPath = OutputDir + "/SourceHanSans-Medium SDF.asset";
+
+        /// <summary>PenchantManufacture の正はサブモジュール。Assets 側の .otf は git 管理外の同期コピー（.meta のみ追跡）。</summary>
+        public const string PenchantSubmoduleDir = "PenchantManufacture_ImageAssets";
+        public const string PenchantSubmoduleFont = PenchantSubmoduleDir + "/assets/fonts/PenchantManufacture.otf";
+
+        /// <summary>サブモジュールの .otf を Assets へコピーして再インポート。差分が無ければ何もしない。</summary>
+        [MenuItem("Signage/Sync Penchant Font (submodule → Assets)")]
+        public static void SyncPenchantFontMenu() => SyncPenchantFont();
+
+        public static bool SyncPenchantFont()
+        {
+            string root = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            string src = Path.Combine(root, PenchantSubmoduleFont);
+            string dst = Path.Combine(root, PenchantSourcePath);
+            if (!File.Exists(src))
+            {
+                Debug.LogError("[Signage] サブモジュールにフォントが無い: " + src + "\nscripts/setup-submodule を実行して。");
+                return false;
+            }
+            if (File.Exists(dst) && File.ReadAllBytes(src).AsSpan().SequenceEqual(File.ReadAllBytes(dst)))
+            {
+                Debug.Log("[Signage] PenchantManufacture.otf は最新のまま。");
+                return true;
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(dst));
+            File.Copy(src, dst, true);
+            AssetDatabase.ImportAsset(PenchantSourcePath, ImportAssetOptions.ForceUpdate);
+            Debug.Log("[Signage] PenchantManufacture.otf をサブモジュールから更新。動的アトラスをクリアする。");
+            ClearPenchantAtlas();
+            return true;
+        }
+
+        /// <summary>サブモジュールを git pull（main）してから SyncPenchantFont。PATH 上の git が必要。</summary>
+        [MenuItem("Signage/Update PenchantManufacture (git pull + sync)")]
+        public static void UpdatePenchantMenu()
+        {
+            string dir = Path.Combine(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), PenchantSubmoduleDir);
+            var (code, stdout, stderr) = SignageDbUpdate.RunGit("pull origin main", dir);
+            if (code != 0)
+            {
+                Debug.LogError("[Signage] PenchantManufacture の git pull に失敗:\n" + stderr);
+                return;
+            }
+            Debug.Log("[Signage] PenchantManufacture_ImageAssets: " + stdout.Trim());
+            SyncPenchantFont();
+        }
 
         /// <summary>
         /// フォント差し替え時の定型: PenchantManufacture SDF の動的アトラスキャッシュを全消去する。

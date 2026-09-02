@@ -73,3 +73,5 @@ crashlytics-build.properties
 # CreationsDB (submodule-driven, generated at sync/build time)
 /[Aa]ssets/StreamingAssets/CreationsDB/
 /[Aa]ssets/StreamingAssets/CreationsDB.meta
+# PenchantManufacture.otf は PenchantManufacture_ImageAssets サブモジュールからの同期コピー（.meta のみ追跡）
+/[Aa]ssets/Fonts/penchant-manufactuer/PenchantManufacture.otf

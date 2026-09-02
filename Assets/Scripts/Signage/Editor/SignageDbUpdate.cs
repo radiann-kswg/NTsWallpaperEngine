@@ -80,7 +80,7 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             EditorUtility.DisplayDialog("Signage", message, "OK");
         }
 
-        static (int code, string stdout, string stderr) RunGit(string arguments, string workingDirectory)
+        internal static (int code, string stdout, string stderr) RunGit(string arguments, string workingDirectory)
         {
             var psi = new ProcessStartInfo
             {

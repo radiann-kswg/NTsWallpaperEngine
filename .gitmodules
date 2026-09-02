@@ -2,3 +2,7 @@
 	path = 100BeautiesLab_CreationsDB
 	url = https://github.com/radiann-kswg/100BeautiesLab_CreationsDB.git
 	branch = develop
+[submodule "PenchantManufacture_ImageAssets"]
+	path = PenchantManufacture_ImageAssets
+	url = https://github.com/radiann-kswg/PenchantManufacture_ImageAssets.git
+	branch = main

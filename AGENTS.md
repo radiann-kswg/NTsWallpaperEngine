@@ -55,6 +55,7 @@
 - **サブモジュール駆動（必読）**: ナンバーテールズの設定ファイル群の正はサブモジュールのみ。`Assets/StreamingAssets/CreationsDB/` は**git管理外の生成物**（`.gitignore` 済み）であり、手編集・コミットを行わない。同期はビルド時（`SignageBuild` が `SignageDbSync` を自動実行）またはメニュー `Signage/Sync CreationsDB` で行う。エディタ再生時に未同期の場合、ランタイムはサブモジュール `100BeautiesLab_CreationsDB/data/Works_NumberTales/` を直接読むフォールバックで動作する。
 - データフロー: サブモジュール →（同期: ビルド時自動 or 手動メニュー）→ `StreamingAssets/CreationsDB/` → ランタイム読込 → カードUI自動生成。
 - フォント: `Assets/Fonts/penchant-manufactuer/PenchantManufacture.otf`（英数字・型番）、`Assets/Fonts/source-han-sans-release`（和文）。TMP FontAsset はエディタメニューから生成する。
+  - **PenchantManufacture の正はサブモジュール `PenchantManufacture_ImageAssets/`**（`radiann-kswg/PenchantManufacture_ImageAssets`、追跡ブランチ `main`、sparse-checkout: `assets/fonts` + LICENSE/md）。`Assets/` 側の `.otf` は **git 管理外の同期コピー**（`.meta` のみ追跡、GUID 維持）。同期はビルド時自動（`SignageBuild`）またはメニュー `Signage/Sync Penchant Font`、更新取得は `Signage/Update PenchantManufacture (git pull + sync)`。新規クローン時は `scripts/setup-submodule.*` が両サブモジュールを初期化する。
 - 数字部分のカウントアップ/ダウン演出は本サイネージの必須要件。改修時も削除しない。
 
 ## 7. ビルドとRaspberry Pi 4Bへの引き渡し

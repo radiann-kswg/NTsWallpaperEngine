@@ -19,3 +19,12 @@ git sparse-checkout set --no-cone \
   '/data/Works_NumberTales/Images/DB_SelfSecondary/corefolder/**'
 
 echo "OK: sparse-checkout configured (Works_NumberTales: DataBases + corefolder images + RoleplayPrompts)"
+
+# PenchantManufacture フォント（正はサブモジュール。Assets 側 .otf は同期コピー）
+cd ..
+git submodule update --init --depth 1 PenchantManufacture_ImageAssets
+cd PenchantManufacture_ImageAssets
+git sparse-checkout set --no-cone '/*.md' '/LICENSE' '/assets/fonts/**'
+cd ..
+cp -f PenchantManufacture_ImageAssets/assets/fonts/PenchantManufacture.otf Assets/Fonts/penchant-manufactuer/PenchantManufacture.otf
+echo "OK: PenchantManufacture.otf synced from submodule"

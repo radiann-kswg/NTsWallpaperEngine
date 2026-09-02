@@ -21,10 +21,15 @@ namespace NTsWallpaperEngine.Signage.EditorTools
 
         public static void BuildLinux64()
         {
-            // 1. サブモジュール → StreamingAssets 同期（released分のみ）
+            // 1. サブモジュール → StreamingAssets 同期（released分のみ）／フォント同期
             if (!SignageDbSync.SyncAll())
             {
                 Debug.LogError("[Signage] CreationsDB同期に失敗したためビルド中止。");
+                return;
+            }
+            if (!SignageFontAssets.SyncPenchantFont())
+            {
+                Debug.LogError("[Signage] PenchantManufacture フォント同期に失敗したためビルド中止。");
                 return;
             }
 
