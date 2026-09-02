@@ -9,7 +9,7 @@
 
 - **プロジェクト名**: NTsWallpaperEngine
 - **目的**: 一次創作「ナンバーテールズ」のキャラクター紹介カードを自動巡回表示する**ディジタルサイネージ**。表示端末は Raspberry Pi 4B（box64 経由で Linux x64 ビルドを実行）。
-- **エンジン**: Unity 6 (6000.3.16f1)
+- **エンジン**: Unity 6 (6000.6.0f1)
 - **リモート**: `radiann-kswg/NTsWallpaperEngine`（GitHub）
 - **データ源**: サブモジュール `100BeautiesLab_CreationsDB/`（下記5章）。UIはこのDBから**自動形成**され、手作業でのキャラデータ入力は行わない。
 
