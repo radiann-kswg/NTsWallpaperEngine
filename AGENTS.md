@@ -31,9 +31,10 @@
 
 ## 4. Git・ファイル運用ルール
 
-1. `Library/`, `Temp/`, `Logs/`, `obj/`, `UserSettings/`, `Builds/` 配下は編集・コミット対象にしない。
+1. `Library/`, `Temp/`, `Logs/`, `obj/`, `UserSettings/`, `Builds/`, `Recordings/` 配下は編集・コミット対象にしない。
 2. `.meta` の生成・削除はUnityエディタに任せ、手作業で不整合を作らない。
 3. 大きな変更（多数ファイル生成・構成変更など）の前に、計画を提示して User に確認する。
+4. **git の書き込みはサンドボックスから行わない**（統合ルート `CLAUDE.md`「git の書き込み」）。マウント上では `.git/*.lock` を unlink できず次の書き込みが詰まるため、`Unity_RunCommand` → `GitTools.RunGit("add -A")` / `GitTools.CommitAll()` を通す（`Assets/Scripts/Signage/Editor/GitTools.cs`。RouletteSphereChaser / NTsLotteryEngine / NTsMedalGame と同一）。Unity MCP が落ちているときだけルートの `scripts/g.sh` を代替に使う。
 
 ## 5. 創作DBサブモジュール（sparse-checkout 運用）
 
@@ -51,7 +52,7 @@
 ## 6. サイネージ実装の構成
 
 - `Assets/Scripts/Signage/` … ランタイム（`CreationsDbLoader` / `SignageController` / `SignageCardView`）。
-- `Assets/Scripts/Signage/Editor/` … エディタ支援（`SignageDbSync`＝サブモジュール→`Assets/StreamingAssets/CreationsDB/` 同期、`SignageSceneBuilder`＝シーン自動構築、`SignageBuild`＝Linux x64 ビルド）。
+- `Assets/Scripts/Signage/Editor/` … エディタ支援（`SignageDbSync`＝サブモジュール→`Assets/StreamingAssets/CreationsDB/` 同期、`SignageSceneBuilder`＝シーン自動構築、`SignageBuild`＝Linux x64 ビルド、`SignageCapture`＝README用の録画と収録状況表（11章）、`GitTools`＝Windows側でのgit実行（4章））。
 - **サブモジュール駆動（必読）**: ナンバーテールズの設定ファイル群の正はサブモジュールのみ。`Assets/StreamingAssets/CreationsDB/` は**git管理外の生成物**（`.gitignore` 済み）であり、手編集・コミットを行わない。同期はビルド時（`SignageBuild` が `SignageDbSync` を自動実行）またはメニュー `Signage/Sync CreationsDB` で行う。エディタ再生時に未同期の場合、ランタイムはサブモジュール `100BeautiesLab_CreationsDB/data/Works_NumberTales/` を直接読むフォールバックで動作する。
 - データフロー: サブモジュール →（同期: ビルド時自動 or 手動メニュー）→ `StreamingAssets/CreationsDB/` → ランタイム読込 → カードUI自動生成。
 - フォント: `Assets/Fonts/penchant-manufactuer/PenchantManufacture.otf`（英数字・型番）、`Assets/Fonts/source-han-sans-release`（和文）。TMP FontAsset はエディタメニューから生成する。
@@ -86,3 +87,25 @@
 ## 10. 他リポジトリとの優先関係
 
 Cowork 等のマルチリポジトリセッションでは、作業対象リポジトリのロールプレイ指定を優先する（本リポジトリ作業時は「零零」）。ルート統合作業の既定はルート `AGENTS.md`（錦野歌嫁）に従う。
+
+## 11. README とプレビューの運用（必読）
+
+**README.md はリポジトリ収録内容の窓口**。GitHub を見れば「いまサイネージがどう見えて何を収録しているか」が常に分かる状態を保つ（NTsMedalGame `AGENTS.md` 4章 / NTsLotteryEngine 4章と同じ運用）。
+
+1. **仕様・構成を変えたら同じコミットで README を直す**。対象は「画面の作り」「アニメーション」「切り替え」「データの流れ」「動作環境」「リポジトリの中身」「エディタメニュー」の各表。詳細は `docs/` 側に置き、README には要約とリンクだけ書く（三重管理にしない）。
+2. **画面の見た目を変えたセッションの終わりに、プレビューを撮り直してコミットする**。撮影ツールは `Assets/Scripts/Signage/Editor/SignageCapture.cs`。
+
+   1. `Signage/Play + Record` → 90秒ほど回して Play を止める（切替を2〜3回入れる）。出力は `Recordings/<日時>.mp4`（git管轄外・コミットしない）。
+   2. サンドボックスの ffmpeg で `docs/captures/` に落とす（GitHub は mp4 をインライン再生しないので README に貼るのは PNG と GIF）:
+
+      ```bash
+      ffmpeg -i rec.mp4 -vf "select='gt(scene,0.15)',metadata=print:file=-" -an -f null -   # 切替の位置を探す
+      ffmpeg -ss <切替の少し後> -i rec.mp4 -frames:v 1 docs/captures/preview_card.png       # 静止画（確定後のカード）
+      ffmpeg -ss <切替の直前> -t 7 -i rec.mp4 -vf "fps=12,scale=480:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse" docs/captures/preview.gif
+      ```
+
+3. **撮影の罠**:
+   - サイネージの Canvas は **ScreenSpaceOverlay** なので、`Camera.Render()`（RenderTexture 直撮り）にも `Unity_Camera_Capture` にも**何も写らない**。静止画も GIF も必ず MP4 から切り出す（Recorder の `GameViewInputSettings` が Game View の大きさに関係なく 960x540 を保証する）。
+   - `CapFrameRate` は **true のまま**。false にすると Game View が100fps超で回る分だけ映像が伸び、GIF がスローモーションになる。代わりに切替の**間隔**は壁時計駆動なので映像の秒数とは一致しない（アニメーション自体の尺 1.4 秒は一致する）。
+   - **録画中に `Assets/` 配下を触らない**。Play を抜けた瞬間に再コンパイル＋ドメインリロードが走り、Recorder が MP4 を閉じ切れず `moov atom not found` の壊れたファイルが残る。
+4. **収録状況の表は手で書かない**。`Signage/Update README Roster` が README の `<!-- roster:start -->`〜`<!-- roster:end -->` の間を書き換える。マーカーを消すと更新が止まる。**個体名は載せない**（表示対象に未公開個体を含むため。8章）。件数だけを出す。
