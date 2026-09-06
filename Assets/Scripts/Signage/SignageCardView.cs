@@ -23,7 +23,8 @@ namespace NTsWallpaperEngine.Signage
         [Header("Character")]
         public RawImage characterImage;
         [Tooltip("コアフォルダ画像の一律縮小率（元画像はキャラ間でサイズ校正済みのため、全員同じ倍率で縮小して相対サイズを保持する）")]
-        [Range(0.1f, 2f)] public float characterScale = 0.92f;
+        // 0.92 × 4/13: corefolder 画像が 325% 拡大された（2026-09-07）分を打ち消して従来の表示サイズを維持
+        [Range(0.1f, 2f)] public float characterScale = 0.283f;
 
         [Header("Big number (left)")]
         public TMP_Text bigNumberText;    // 例 "044"（旧シーン踏襲の大型番号・カウント演出対象）

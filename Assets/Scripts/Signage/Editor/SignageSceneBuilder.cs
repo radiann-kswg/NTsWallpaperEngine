@@ -146,7 +146,7 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             view.dotsOverlay = dots;
             view.characterGlow = glow;
             view.characterImage = charImage;
-            view.characterScale = 0.92f; // 960x540基準・中央寄せ調整版
+            view.characterScale = 0.283f; // 960x540基準・中央寄せ調整版（0.92 × 4/13: 325%拡大画像対応）
             view.bigNumberText = bigNumber;
             view.modelNumberText = modelNumber;
             view.formalNameText = formalName;
