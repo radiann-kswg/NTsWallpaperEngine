@@ -1,14 +1,16 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace NTsWallpaperEngine.Signage
 {
     /// <summary>
     /// サイネージ本体。創作DB（サブモジュール駆動）からレコードを読み込み、
-    /// 毎分（またはクリック時）にカードを切り替える。数字カウントアニメーションは必須要件（AGENTS.md 6章）。
+    /// 毎分（またはクリック／ゲームパッド入力時）にカードを切り替える。数字カウントアニメーションは必須要件（AGENTS.md 6章）。
     /// 旧 CharacterAssetsDB のアニメーション仕様（カウント演出・イージング・フェード）を踏襲。
     /// </summary>
     public class SignageController : MonoBehaviour
@@ -31,9 +33,8 @@ namespace NTsWallpaperEngine.Signage
         [Header("Switching")]
         [Tooltip("切替間隔（秒）。秒針と同期し、30なら秒針00/30、20なら00/20/40ちょうどで切り替わる（60の約数推奨）")]
         [SerializeField] int switchIntervalSeconds = 30;
-        [Tooltip("再生モード（ランダム／番号順）。実行中は modeToggleKey か右クリックで切替")]
+        [Tooltip("再生モード（ランダム／番号順）。実行中は M キー・右クリック・ゲームパッドの Y(北) で切替")]
         [SerializeField] PlaybackMode playbackMode = PlaybackMode.Random;
-        [SerializeField] KeyCode modeToggleKey = KeyCode.M;
 
         [Header("Daily DB reload (RPi常時稼働向け)")]
         [Tooltip("毎日この時刻(時)にDBを再読込する。OS側の日次pull（scripts/rpi/update-creationsdb.sh）とセットで運用")]
@@ -60,8 +61,31 @@ namespace NTsWallpaperEngine.Signage
 
         System.Random _random = new System.Random();
 
+        // 入力（Input System）: 次のカード = 左クリック/タップ・パッド A(南)、再生モード切替 = 右クリック・M・パッド Y(北)
+        InputAction _nextAction, _modeAction;
+
+        void Awake()
+        {
+            // RPi の X セッション（NTsWallpaper / UnityConsole とも）にはウィンドウマネージャが無く、窓がフォーカスを得ない。
+            // 既定の ResetAndDisableNonBackgroundDevices だと全デバイスが「非フォーカス」で無効化されるので、
+            // フォーカスを無視させ、起動時点で無効化済みのデバイスも明示的に戻す（NTsSphereChaser 826ea11 で実測）。
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            foreach (var d in InputSystem.devices) InputSystem.EnableDevice(d);
+
+            _nextAction = new InputAction("NextCard", InputActionType.Button, "<Pointer>/press"); // マウス左・タッチ
+            _nextAction.AddBinding("<Gamepad>/buttonSouth");
+            _modeAction = new InputAction("TogglePlaybackMode", InputActionType.Button, "<Mouse>/rightButton");
+            _modeAction.AddBinding("<Keyboard>/m");
+            _modeAction.AddBinding("<Gamepad>/buttonNorth");
+        }
+
+        void OnEnable() { _nextAction.Enable(); _modeAction.Enable(); }
+        void OnDisable() { _nextAction.Disable(); _modeAction.Disable(); }
+
         void Start()
         {
+            Debug.Log("[Signage] 入力デバイス: " + string.Join(", ",
+                InputSystem.devices.Select(d => $"{d.displayName}({d.layout}{(d.enabled ? "" : ",disabled")})")));
             _records = CreationsDbLoader.LoadAll();
             RebuildSortedList();
             _lastReloadDate = DateTime.Now.Date;
@@ -97,12 +121,11 @@ namespace NTsWallpaperEngine.Signage
                 if (!_isAnimating) StartCoroutine(AnimateCard());
             }
 
-            // クリック/タップでも切り替え（旧実装踏襲）
-            if (Input.GetMouseButtonDown(0) && !_isAnimating)
+            // クリック/タップ・パッドAでも切り替え（旧実装踏襲）
+            if (_nextAction.WasPressedThisFrame() && !_isAnimating)
                 StartCoroutine(AnimateCard());
 
-            // 再生モード切替（Mキー or 右クリック）
-            if (Input.GetKeyDown(modeToggleKey) || Input.GetMouseButtonDown(1))
+            if (_modeAction.WasPressedThisFrame())
                 TogglePlaybackMode();
 
             // 日次リロード: OS側がpullした最新DBを毎日 dailyReloadHour 時に取り込む（常時稼働サイネージ向け）
@@ -233,7 +256,7 @@ namespace NTsWallpaperEngine.Signage
 
         // ---- 背景デザイン（3層: 縦グラデーション / エッジ強調ドット / キャラ背後グロー）----
 
-        void SetupBackground()
+        public void SetupBackground() // SignageCapture（エディタでのカード撮影）からも呼ぶ
         {
             if (!view) return;
 
@@ -348,6 +371,8 @@ namespace NTsWallpaperEngine.Signage
 
         void OnDestroy()
         {
+            _nextAction?.Dispose();
+            _modeAction?.Dispose();
             if (_dotTexture) Destroy(_dotTexture);
             if (_gradientTexture) Destroy(_gradientTexture);
             if (_glowTexture) Destroy(_glowTexture);

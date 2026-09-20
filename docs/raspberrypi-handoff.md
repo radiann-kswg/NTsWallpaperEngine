@@ -37,7 +37,7 @@ Unityメニュー `Signage/Build Linux x64 (RPi Signage)` の実行で生成さ�
 /opt/ntswallpaper/run-signage.sh
 ```
 
-スクリプト内で `MESA_GL_VERSION_OVERRIDE=3.3` を設定している（V3DのGLバージョン報告がUnity要求より低いための引き上げ。本サイネージは2D UIのみなので実用上動作する想定）。
+スクリプト内で `SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1`（ゲームパッド入力を窓のフォーカス無しで受け取る。6章）と `MESA_GL_VERSION_OVERRIDE=3.3` を設定している（V3DのGLバージョン報告がUnity要求より低いための引き上げ。本サイネージは2D UIのみなので実用上動作する想定）。
 
 レンダリング解像度は **960x540**（UIの基準解像度と一致）。フルスクリーン表示時はディスプレイ側で拡大されるため、RPi 4Bの描画負荷はフルHD比で約1/4になる。
 
@@ -90,7 +90,7 @@ WantedBy=graphical-session.target
 
 ## 4. 動作仕様（サイネージ）
 
-- 毎分（時計の分が変わるタイミング）でキャラクターカードが自動切替。画面クリック/タップでも切替。
+- 毎分（時計の分が変わるタイミング）でキャラクターカードが自動切替。画面クリック/タップ・ゲームパッドのA（南ボタン）でも切替。右クリック・Mキー・パッドのY（北ボタン）で再生モード（ランダム／番号順）を切替。
 - カードは創作DB（db_Primary / db_SemiPrimary / db_SelfSecondary）から自動形成。corefolder画像・型番・名前・機体名・テーマ色を表示。
 - 数字部分はカウントアップ/ダウンのアニメーション付き。
 - 時計（HH mm）を左上に常時表示。
@@ -106,5 +106,6 @@ WantedBy=graphical-session.target
 | --- | --- |
 | 起動直後にクラッシュ | `BOX64_LOG=1` で再実行しログ確認。`BOX64_DYNAREC_BIGBLOCK=1` に下げる |
 | 「OpenGL 3.2 not supported」系エラー | MESA_GL_VERSION_OVERRIDE が効いているか確認（`glxinfo | grep version`） |
+| ゲームパッドが効かない（マウスは効く） | 起動環境に `SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1` があるか確認（`run-signage.sh` / UnityConsole の `ucon-run-app` が設定）。WM の無い X では窓がフォーカスを得ず、SDL が既定でパッド入力を捨てる。Player.log 冒頭の `[Signage] 入力デバイス:` にパッドが `Gamepad` として出ているかも見る |
 | 画面が出ずXエラー | デスクトップセッション内から起動しているか確認（SSHからは `DISPLAY=:0` を付与） |
 | 文字化け・豆腐 | ビルドにフォントは同梱済みのため通常発生しない。発生時はビルド成果物の破損を疑う |

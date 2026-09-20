@@ -6,7 +6,10 @@ using UnityEditor;
 using UnityEditor.Recorder;
 using UnityEditor.Recorder.Encoder;
 using UnityEditor.Recorder.Input;
+using UnityEditor.SceneManagement;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace NTsWallpaperEngine.Signage.EditorTools
 {
@@ -18,6 +21,8 @@ namespace NTsWallpaperEngine.Signage.EditorTools
     ///   **静止画も GIF もこの MP4 から ffmpeg で切り出す**（本サイネージの Canvas は ScreenSpaceOverlay のため
     ///   `Camera.Render()` にも `Unity_Camera_Capture` にも写らない。Game View 直撮りは Game View の解像度に左右される）。
     /// - `Signage/Update README Roster` … 創作DBの表示対象件数を README のマーカー間へ書き戻す（Play 不要）。
+    /// - `Signage/Capture Launcher Icon` … 指定の corefolder 画像を載せたカード1枚を PNG に焼く（Play 不要・バッチ可）。
+    ///   UnityConsole ランチャーのタイル用 `docs/captures/icon.png`（ビルド時に実行ファイルの隣へ同梱）。
     /// </summary>
     [InitializeOnLoad]
     public static class SignageCapture
@@ -133,6 +138,84 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             }
             File.WriteAllText(path, text.Substring(0, a) + body + text.Substring(b + End.Length));
             Debug.Log($"[SignageCapture] README の収録状況表を更新（{records.Count} 体）");
+        }
+
+        // ---- カード1枚の静止画（ランチャーアイコン）----
+
+        public const string IconPath = "docs/captures/icon.png";
+        const string IconImage = "emstk_corefolderNTS-87-2"; // 87(ハナ) の 2 枚目の corefolder（User 指定 2026-09-20）
+
+        [MenuItem("Signage/Capture Launcher Icon")]
+        public static void CaptureIcon() => CaptureCard(IconImage, Path.Combine(Repo, IconPath));
+
+        /// <summary>
+        /// バッチ用: アイコンを撮り、<c>-cards "a;b"</c>（画像名。222 の2体並びのように名前に "," を含むので ";" 区切り）があれば
+        /// <c>Recordings/card_&lt;画像名&gt;.png</c> も撮る（見比べ用。Recordings/ は git 管轄外）。
+        /// </summary>
+        public static void CaptureCardsFromArgs()
+        {
+            CaptureIcon();
+            var args = Environment.GetCommandLineArgs();
+            int i = Array.IndexOf(args, "-cards");
+            if (i < 0 || i + 1 >= args.Length) return;
+            foreach (var stem in args[i + 1].Split(';'))
+                CaptureCard(stem.Trim(), Path.Combine(Repo, "Recordings", $"card_{stem.Trim()}.png"));
+        }
+
+        /// <summary>
+        /// シーンを開き、画像 <paramref name="imageStem"/>（拡張子なしのファイル名）を持つレコードで確定後のカードを組んで撮る。
+        /// Canvas は ScreenSpaceOverlay で Camera に写らないため、撮る間だけ ScreenSpaceCamera にして RenderTexture へ描く。
+        /// シーンは保存しない（最後に開き直して変更を捨てる）。
+        /// </summary>
+        public static void CaptureCard(string imageStem, string outPath)
+        {
+            EditorSceneManager.OpenScene(SignageSceneBuilder.ScenePath);
+            var view = UnityEngine.Object.FindAnyObjectByType<SignageCardView>();
+            var controller = UnityEngine.Object.FindAnyObjectByType<SignageController>();
+            var record = CreationsDbLoader.LoadAll()
+                .FirstOrDefault(r => r.ImagePaths.Any(p => Path.GetFileNameWithoutExtension(p) == imageStem));
+            if (!view || !controller || record == null)
+            {
+                Debug.LogError($"[SignageCapture] 撮影できない: {imageStem}（シーン部品かレコードが見つからない）");
+                return;
+            }
+
+            controller.SetupBackground();
+            view.Apply(record, CreationsDbLoader.LoadTexture(record.ImagePaths.First(p => Path.GetFileNameWithoutExtension(p) == imageStem)));
+            view.SetTextProgress(1f);
+            view.SetNumberFinal();
+            view.SetAlpha(1f);
+            var now = DateTime.Now;
+            view.SetClock(now.AddMilliseconds(-now.Millisecond)); // 「:」が点いている瞬間で撮る
+
+            var canvas = view.characterImage.canvas;
+            var cam = Camera.main;
+            var rt = new RenderTexture(Width, Height, 24);
+            canvas.GetComponent<CanvasScaler>().enabled = false; // RT がそのまま UI 基準解像度(960x540)なので等倍
+            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.worldCamera = cam;
+            canvas.scaleFactor = 1f;
+            cam.targetTexture = rt;
+            Canvas.ForceUpdateCanvases();
+            foreach (var t in canvas.GetComponentsInChildren<TMP_Text>()) t.ForceMeshUpdate();
+            cam.Render();
+
+            var prev = RenderTexture.active;
+            RenderTexture.active = rt;
+            var tex = new Texture2D(Width, Height, TextureFormat.RGB24, false);
+            tex.ReadPixels(new Rect(0, 0, Width, Height), 0, 0);
+            tex.Apply();
+            RenderTexture.active = prev;
+            cam.targetTexture = null;
+
+            var shown = view.characterImage.rectTransform.sizeDelta;
+            Directory.CreateDirectory(Path.GetDirectoryName(outPath));
+            File.WriteAllBytes(outPath, tex.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(tex);
+            rt.Release();
+            UnityEngine.Object.DestroyImmediate(rt);
+            EditorSceneManager.OpenScene(SignageSceneBuilder.ScenePath); // 撮影用の変更を捨てる
+            Debug.Log($"[SignageCapture] カードを撮影: {imageStem} → {outPath}（画像の表示サイズ {shown}）");
         }
     }
 }

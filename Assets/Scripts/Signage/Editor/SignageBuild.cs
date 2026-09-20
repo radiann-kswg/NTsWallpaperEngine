@@ -59,8 +59,13 @@ namespace NTsWallpaperEngine.Signage.EditorTools
 
             BuildReport report = BuildPipeline.BuildPlayer(options);
             if (report.summary.result == BuildResult.Succeeded)
+            {
+                // UnityConsole ランチャーはアプリ直下の icon.png をタイルに出す。カセットはビルド一式ごと運ばれる
+                if (File.Exists(SignageCapture.IconPath))
+                    File.Copy(SignageCapture.IconPath, Path.Combine(Path.GetDirectoryName(OutputPath), "icon.png"), true);
                 Debug.Log($"[Signage] ビルド成功: {OutputPath} ({report.summary.totalSize / (1024 * 1024)} MB)\n" +
                           "docs/raspberrypi-handoff.md に従って「Raspberry Pi OS開発」へ引き渡して。");
+            }
             else
                 Debug.LogError($"[Signage] ビルド失敗: {report.summary.result}");
         }

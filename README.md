@@ -26,7 +26,7 @@
 | --- | --- | --- |
 | 左上 | 時計 `HH:MM`＋小さい秒／下段に日付（英語曜日）。「:」は0.5秒周期で点滅 | — |
 | 右上 | 型番 → 正式名称（全文・最大2行） → 英名 | `ModelNumber` / `FormalName_EN` / `Name_EN` |
-| 中央やや左 | corefolder 画像（背後にソフトグロー）。全個体を同じ倍率で縮小してキャラ間のサイズ比を保つ | `Images.corefolder_PNGPath`（複数あればランダム） |
+| 中央やや左 | corefolder 画像（背後にソフトグロー）。**元画像のピクセル寸法 × 一律倍率**（`characterScale` 0.283）で表示し、キャラ間・差分間のサイズ比は元画像のまま | `Images.corefolder_PNGPath`（複数あればランダム） |
 | 右下 | Class（1要素1行）→ 区切り線 → Gender / Concept Age → 英語機体名 | `Class` / `GenderType` / `ConceptAge` / `ModelName_EN` |
 | 左下 | 大型番号（透かし風・カウント演出の主役） | `Num`（数値・数式部分のみ。`111-mp`→`111`, `3x11`→`3x11`） |
 
@@ -53,8 +53,9 @@
 | | |
 | --- | --- |
 | 自動 | 既定 **30秒**ごと。**秒針同期**（実時刻を間隔で割ったスロット境界で発火するので、30なら毎分00/30秒ちょうど） |
-| 手動 | 画面を左クリック／タップ |
-| 再生モード | **Random**（直前と同じ個体は連続しない）⇄ **Sequential**（`Num` 昇順）を `M` キーか右クリックで切替。算術表記（`3x11`→33）は計算値、16進表記（`0xA`）はデコード値で通常番号の後ろに別グループとして並ぶ |
+| 手動 | 画面を左クリック／タップ、またはゲームパッドの **A（南ボタン）** |
+| 再生モード | **Random**（直前と同じ個体は連続しない）⇄ **Sequential**（`Num` 昇順）を `M` キー・右クリック・ゲームパッドの **Y（北ボタン）** で切替。算術表記（`3x11`→33）は計算値、16進表記（`0xA`）はデコード値で通常番号の後ろに別グループとして並ぶ |
+| 入力 | Input System（`com.unity.inputsystem` 1.20.0、旧 Input Manager は無効）。RPi の X はウィンドウマネージャが無く窓がフォーカスを得ないため、`backgroundBehavior = IgnoreFocus` で入力を止めない。パッドは起動側の `SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1` も必須（`scripts/rpi/run-signage.sh` / UnityConsole の `ucon-run-app` が設定）。起動時に `[Signage] 入力デバイス:` を Player.log へ出す |
 | 日次リロード | 毎日 `dailyReloadHour`（既定 04時）にDBを読み直す。常時稼働のまま新キャラ・修正が反映され、失敗した日は直前のデータで継続する |
 
 ## データの流れ（サブモジュール駆動）
@@ -98,7 +99,7 @@
 | --- | --- |
 | エンジン | Unity **6000.6.0f1** / URP 17.6.0（2D Renderer） |
 | 表示解像度 | **960x540** フルスクリーン（UIの基準解像度と一致。フルHDに拡大表示され、描画負荷は約1/4） |
-| ビルド | **StandaloneLinux64 / Mono**（box64 互換性優先で IL2CPP は使わない）。`Signage/Build Linux x64 (RPi Signage)` → `Builds/LinuxSignage/` |
+| ビルド | **StandaloneLinux64 / Mono**（box64 互換性優先で IL2CPP は使わない）。`Signage/Build Linux x64 (RPi Signage)` → `Builds/LinuxSignage/`（実行ファイルの隣に UnityConsole ランチャー用 `icon.png` を同梱） |
 | 実機 | Raspberry Pi 4B + Raspberry Pi OS 64bit（Bookworm 以降・**デスクトップ版**）+ box64（RPI4ARM64 プリセット）。`MESA_GL_VERSION_OVERRIDE=3.3` で起動 |
 | 想定fps | 15〜30fps（2D UI のみ。非公式構成のため実機検証必須） |
 
@@ -109,13 +110,13 @@ OSイメージへの組み込み・自動起動・DB日次pullのタイマー設
 | パス | 中身 |
 | --- | --- |
 | `Assets/Scripts/Signage/` | ランタイム。`CreationsDbLoader`（DB読込・enrich・テーマ色）/ `SignageController`（切替・アニメ駆動・背景生成）/ `SignageCardView`（カードUIとスクランブル） |
-| `Assets/Scripts/Signage/Editor/` | `SignageSceneBuilder`（シーン自動構築）/ `SignageDbSync`・`SignageDbUpdate`（DB同期・更新）/ `SignageFontAssets`（フォント同期・TMP生成）/ `SignageBuild`（Linuxビルド）/ `SignageCapture`（README用の録画と収録表） |
+| `Assets/Scripts/Signage/Editor/` | `SignageSceneBuilder`（シーン自動構築）/ `SignageDbSync`・`SignageDbUpdate`（DB同期・更新）/ `SignageFontAssets`（フォント同期・TMP生成）/ `SignageBuild`（Linuxビルド）/ `SignageCapture`（README用の録画・収録表・ランチャーアイコン） |
 | `Assets/Scenes/SignageScene.unity` | 唯一のシーン。`Signage/Build Signage Scene` で作り直せる（手で組まない） |
 | `Assets/Fonts/` | PenchantManufacture（英数・型番）/ Source Han Sans（和文フォールバック）/ D-DIN |
 | `100BeautiesLab_CreationsDB/` | 創作DBサブモジュール（sparse・**読み取り専用**） |
 | `PenchantManufacture_ImageAssets/` | フォントの正本サブモジュール（sparse）。`Assets/` 側の `.otf` は同期コピー（git管理外・`.meta` のみ追跡） |
 | `scripts/` | `setup-submodule.ps1/.sh`（クローン直後のsparse設定）/ `rpi/run-signage.sh`・`rpi/update-creationsdb.sh`（実機側） |
-| `docs/` | `raspberrypi-handoff.md`（引き渡し資料）/ `captures/`（READMEのプレビュー） |
+| `docs/` | `raspberrypi-handoff.md`（引き渡し資料）/ `captures/`（READMEのプレビューと UnityConsole ランチャー用 `icon.png`） |
 
 ## エディタメニュー（`Signage/`）
 
@@ -129,6 +130,7 @@ OSイメージへの組み込み・自動起動・DB日次pullのタイマー設
 | `Build Linux x64 (RPi Signage)` | DB同期＋Linux x64 ビルド（`Builds/LinuxSignage/`） |
 | `Play + Record` | Unity Recorder で Game View を 960x540 MP4 に録りながら Play（`Recordings/`・git管理外） |
 | `Update README Roster` | この README の収録状況表を数え直して書き戻す |
+| `Capture Launcher Icon` | 87(ハナ) の 2 枚目の corefolder を載せたカードを `docs/captures/icon.png`（960x540）に焼く。Play 不要・バッチ可（`SignageCapture.CaptureCardsFromArgs`） |
 
 ## セットアップ
 
