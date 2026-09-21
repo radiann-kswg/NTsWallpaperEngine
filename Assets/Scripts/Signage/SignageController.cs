@@ -77,11 +77,19 @@ namespace NTsWallpaperEngine.Signage
         const string PrefInterval = "signage.intervalSeconds";
         const string PrefMode = "signage.playbackMode";
 
-        /// <summary>長押しの行き先。サイネージOSでは run-signage.sh が poweroff を指定する。</summary>
-        static bool PowerOffOnQuit =>
-            string.Equals(Environment.GetEnvironmentVariable("NTSWE_QUIT_ACTION"), "poweroff",
-                StringComparison.OrdinalIgnoreCase);
-        static string QuitLabel => PowerOffOnQuit ? "電源オフ" : "終了";
+        /// <summary>
+        /// 長押しの行き先（systemctl に渡す動詞）。poweroff / reboot 以外・未設定はアプリ終了（UnityConsole ではランチャーへ）。
+        /// サイネージOSは /boot/firmware/ntswallpaper.conf の LONG_PRESS_ACTION を X セッションが渡してくる（既定 poweroff）。
+        /// </summary>
+        static string SystemVerb
+        {
+            get
+            {
+                string v = Environment.GetEnvironmentVariable("NTSWE_QUIT_ACTION")?.Trim().ToLowerInvariant();
+                return v == "poweroff" || v == "reboot" ? v : null;
+            }
+        }
+        static string QuitLabel => SystemVerb switch { "poweroff" => "電源オフ", "reboot" => "再起動", _ => "終了" };
 
         void Awake()
         {
@@ -182,7 +190,7 @@ namespace NTsWallpaperEngine.Signage
             switch (_input.PollSystem(out float hold))
             {
                 case SignageInput.Press.Short: StartDbUpdate(); break;
-                case SignageInput.Press.Long: StartCoroutine(QuitOrPowerOff()); break;
+                case SignageInput.Press.Long: StartCoroutine(QuitOrShutdown()); break;
             }
             _hud?.Hold(hold, $"長押しで{QuitLabel}…");
         }
@@ -252,21 +260,21 @@ namespace NTsWallpaperEngine.Signage
             return reloaded.Count;
         }
 
-        // ---- 終了・電源オフ（長押し）----
+        // ---- 終了・電源オフ・再起動（長押し）----
 
-        IEnumerator QuitOrPowerOff()
+        IEnumerator QuitOrShutdown()
         {
             if (_quitting) yield break;
             _quitting = true;
-            _hud?.Toast(PowerOffOnQuit ? "電源をオフします…" : "終了します…", 15f);
+            _hud?.Toast($"{QuitLabel}します…", 15f);
             yield return new WaitForSecondsRealtime(0.7f);      // 文字を読ませてから落とす
 
-            if (PowerOffOnQuit)
+            if (SystemVerb != null)
             {
-                string error = PowerOff();
+                string error = Systemctl(SystemVerb);
                 if (error == null) yield break;                 // あとは systemd が止める
                 _quitting = false;
-                _hud?.Toast("電源オフに失敗: " + error, 6f);
+                _hud?.Toast($"{QuitLabel}に失敗: {error}", 6f);
                 yield break;
             }
 #if UNITY_EDITOR
@@ -280,22 +288,23 @@ namespace NTsWallpaperEngine.Signage
         /// tty1 のセッション内から呼ぶので polkit が許可する（sudo も sudoers 追加も不要。2026-09-21 実機で確認）。
         /// 失敗したときだけ理由を返す。
         /// </summary>
-        static string PowerOff()
+        static string Systemctl(string verb)
         {
             try
             {
-                var psi = new System.Diagnostics.ProcessStartInfo("systemctl", "poweroff")
+                var psi = new System.Diagnostics.ProcessStartInfo("systemctl", verb)
                 {
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardError = true,
                 };
                 using var process = System.Diagnostics.Process.Start(psi);
+                // box64 上の Mono は子プロセスを回収できず WaitForExit / ExitCode が当てにならない（CreationsDbUpdater と同じ）。
+                // stderr が閉じた＝終わったとみなし、何か書かれていれば失敗として返す（成功時の systemctl は無言）。
                 var stderr = process.StandardError.ReadToEndAsync();
-                if (!process.WaitForExit(15000)) return "応答なし";
-                if (process.ExitCode == 0) return null;
+                if (!stderr.Wait(15000)) return "応答なし";
                 string message = stderr.Result.Trim();
-                return message.Length > 0 ? message : $"exit {process.ExitCode}";
+                return message.Length > 0 ? message : null;
             }
             catch (Exception e)
             {

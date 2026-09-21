@@ -66,9 +66,9 @@
 | 自動送り間隔 20秒/30秒/1分/2分 | 1〜4 | X（西）で巡回 | －（マウスは非対応） |
 | 操作方法の表示 | H・F1 | Select | － |
 | 創作DBの取り直し（短押し） | Esc | Start | ホイール押し込み |
-| 終了（長押し2秒） | Esc | Start | ホイール押し込み |
+| 終了・電源オフ・再起動（長押し2秒） | Esc | Start | ホイール押し込み |
 
-- **長押しの行き先は起動側が決める**: 環境変数 `NTSWE_QUIT_ACTION=poweroff` が立っていれば `systemctl poweroff`（サイネージOS。tty1 セッション内から呼ぶので polkit が許可し、sudo は要らない）、無ければアプリ終了（UnityConsole ではランチャーへ戻る）。
+- **長押しの行き先は起動側が決める**: 環境変数 `NTSWE_QUIT_ACTION` が `poweroff` なら `systemctl poweroff`、`reboot` なら `systemctl reboot`（サイネージOS。tty1 セッション内から呼ぶので polkit が許可し、sudo は要らない）、それ以外・未設定ならアプリ終了（UnityConsole ではランチャーへ戻る）。NTsWallpaper OS では `/boot/firmware/ntswallpaper.conf` の `LONG_PRESS_ACTION`（既定 `poweroff`）で選ぶ。
 - **短押しの取り直し**は実行ファイルの隣の `update-creationsdb.sh`（OSの日次タイマーと同じ正本）を走らせ、取得できたらその場で読み直す（再起動しない）。取得先は `NTSWE_CREATIONSDB` があればそこ、無ければ `persistentDataPath/creationsdb`（UnityConsole 等・要 git）。
 - 入力は Input System（`com.unity.inputsystem` 1.20.0、旧 Input Manager は無効）。RPi の X はウィンドウマネージャが無く窓がフォーカスを得ないため、`backgroundBehavior = IgnoreFocus` で入力を止めない。**パッドは起動側の `SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1`、キーボードは起動側で X の入力フォーカスを `PointerRoot` にすることが必須**（`scripts/rpi/run-signage.sh` / UnityConsole の `ucon-run-app`。既定の `None` のままだとキー入力はどの窓にも配送されない）。起動時に `[Signage] 入力デバイス:` を Player.log へ出す
 - 長押しは「押されている状態」を見て、離上を 0.15 秒だけ様子見してから確定する。**X のキーリピートは「離上＋押下」の連打として届く**ので、押下エッジで測ると長押しが永遠に成立しない（2026-09-21 実機で確認）

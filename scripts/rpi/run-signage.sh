@@ -3,7 +3,7 @@
 # 配置想定: /opt/ntswallpaper/ に Builds/LinuxSignage/ の中身と本スクリプトを置く。
 # OSイメージへの組み込み・自動起動設定は「Raspberry Pi OS開発」プロジェクト側で行う。
 set -u
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit 1
 
 # OS側の日次pull先（update-creationsdb.sh）があれば、ビルド同梱データより優先して参照する
 CREATIONSDB_DIR="${CREATIONSDB_REPO_DIR:-/opt/ntswallpaper/creationsdb}/data/Works_NumberTales"
@@ -20,8 +20,9 @@ export MESA_GLSL_VERSION_OVERRIDE=330
 # 無いと Input System 上は Gamepad として認識されるのにボタンが一切届かない（2026-09-20 実機・仮想パッドで確認）
 export SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1
 
-# 長押し（Esc / パッドStart / ホイール押し込み）の行き先。サイネージ機は電源オフにする。
-export NTSWE_QUIT_ACTION=poweroff
+# 長押し（Esc / パッドStart / ホイール押し込み）の行き先。poweroff（既定）か reboot。
+# NTsWallpaper OS では X セッションが /boot/firmware/ntswallpaper.conf の LONG_PRESS_ACTION を渡してくる。
+export NTSWE_QUIT_ACTION="${NTSWE_QUIT_ACTION:-poweroff}"
 
 # X にウィンドウマネージャが無いため入力フォーカスが None のままで、キー入力はどの窓にも配送されない
 # （2026-09-21 実機実測: 仮想キーボードの M が無反応 → PointerRoot にした瞬間に届いた）。

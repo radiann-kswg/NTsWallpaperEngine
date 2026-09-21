@@ -43,7 +43,7 @@ Unityメニュー `Signage/Build Linux x64 (RPi Signage)` の実行で生成さ�
 - `MESA_GL_VERSION_OVERRIDE=3.3` — V3DのGLバージョン報告がUnity要求より低いための引き上げ（本サイネージは2D UIのみなので実用上動作する）。
 - `SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1` — ゲームパッド入力を窓のフォーカス無しで受け取る（6章）。
 - **X の入力フォーカスを `PointerRoot` にする**（起動2/15/45秒後に設定）。WM が無い X では既定が `None` のままで、**キーボード入力がどの窓にも配送されない**（2026-09-21 実機で確認）。ポインタ下の窓＝全画面のサイネージへキーが流れるようにする。
-- `NTSWE_QUIT_ACTION=poweroff` — 長押し（Esc / パッドStart / ホイール押し込みを2秒）の行き先。サイネージ機は電源オフ、この変数が無い機体（UnityConsole 等）はアプリ終了になる。
+- `NTSWE_QUIT_ACTION`（未設定なら `poweroff`）— 長押し（Esc / パッドStart / ホイール押し込みを2秒）の行き先。`poweroff` で電源オフ、`reboot` で再起動。起動側が先に設定していればその値を使う（NTsWallpaper OS は X セッションが `/boot/firmware/ntswallpaper.conf` の `LONG_PRESS_ACTION` を渡す）。この変数が無い機体（UnityConsole 等）はアプリ終了になる。
 
 レンダリング解像度は **960x540**（UIの基準解像度と一致）。フルスクリーン表示時はディスプレイ側で拡大されるため、RPi 4Bの描画負荷はフルHD比で約1/4になる。
 
@@ -100,7 +100,7 @@ WantedBy=graphical-session.target
 - 既定30秒（実行中に 20秒/30秒/1分/2分 へ変更可・設定は保存される）でキャラクターカードが自動切替。
 - 操作は マウス / キーボード / ゲームパッド の3系統（Input System）。**一覧は実行中に `H`・`F1`・パッド `Select` で画面に出る**（正本は `Assets/Scripts/Signage/SignageInput.cs`、README にも表がある）。
   次のカード = 左クリック・Space/Enter・A(南) ／ 番号順の前後 = 矢印・十字・左スティック ／ 再生モード = 右クリック・M・Y(北) ／
-  自動送り間隔 = 1〜4・X(西) ／ 創作DB取り直し = 短押し（Esc・Start・ホイール押し込み） ／ 終了・電源オフ = 同じ入力の長押し2秒。
+  自動送り間隔 = 1〜4・X(西) ／ 創作DB取り直し = 短押し（Esc・Start・ホイール押し込み） ／ 終了・電源オフ・再起動 = 同じ入力の長押し2秒（どれになるかは `NTSWE_QUIT_ACTION`）。
 - カードは創作DB（db_Primary / db_SemiPrimary / db_SelfSecondary）から自動形成。corefolder画像・型番・名前・機体名・テーマ色を表示。
 - 数字部分はカウントアップ/ダウンのアニメーション付き。
 - 時計（HH mm）を左上に常時表示。
