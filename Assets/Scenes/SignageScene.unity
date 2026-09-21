@@ -1671,8 +1671,8 @@ MonoBehaviour:
   textAnimSpeed: 0.6
   switchIntervalSeconds: 30
   playbackMode: 0
-  modeToggleKey: 109
   dailyReloadHour: 4
+  hudFont: {fileID: 11400000, guid: bc5231044be446b459ba131a82d5aad2, type: 2}
   dotCellSize: 56
   dotRadius: 0.24
   dotMaxAlpha: 0.55

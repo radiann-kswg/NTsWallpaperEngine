@@ -64,29 +64,40 @@ namespace NTsWallpaperEngine.Signage
         /// <summary>外部データパス指定用の環境変数（RPi運用時にOS側の日次pull先を指す）。</summary>
         public const string ExternalRootEnvVar = "NTSWE_CREATIONSDB";
 
+        /// <summary>実行中に取り直した分（CreationsDbUpdater）を指す。設定されていれば最優先で読む。</summary>
+        public static string ExternalRootOverride;
+
         /// <summary>
         /// データルート（DataBases/ と Images/ を含むフォルダ）を解決する。優先順:
-        ///   1. 環境変数 NTSWE_CREATIONSDB（RPi等でOS側が日次pullするDBリポジトリ内の Works_NumberTales を指定）
-        ///   2. StreamingAssets/CreationsDB（ビルド時同期分）
-        ///   3. サブモジュール直読み（エディタ/開発時フォールバック）
+        ///   1. ExternalRootOverride（実行中に Esc/Start/ホイール短押しで取り直した分）
+        ///   2. 環境変数 NTSWE_CREATIONSDB（RPi等でOS側が日次pullするDBリポジトリ内の Works_NumberTales を指定）
+        ///   3. persistentDataPath/creationsdb（OS側の指定が無い機体で、アプリ自身が取得した分）
+        ///   4. StreamingAssets/CreationsDB（ビルド時同期分）
+        ///   5. サブモジュール直読み（エディタ/開発時フォールバック）
         /// </summary>
         public static string ResolveDataRoot()
         {
+            if (HasDatabases(ExternalRootOverride)) return ExternalRootOverride;
+
             string external = Environment.GetEnvironmentVariable(ExternalRootEnvVar);
-            if (!string.IsNullOrEmpty(external) && Directory.Exists(Path.Combine(external, "DataBases")))
-                return external;
+            if (HasDatabases(external)) return external;
+
+            string appOwned = CreationsDbUpdater.DataRootOf(
+                Path.Combine(Application.persistentDataPath, "creationsdb"));
+            if (HasDatabases(appOwned)) return appOwned;
 
             string streaming = Path.Combine(Application.streamingAssetsPath, "CreationsDB");
-            if (Directory.Exists(Path.Combine(streaming, "DataBases")))
-                return streaming;
+            if (HasDatabases(streaming)) return streaming;
 
             // エディタ/開発時フォールバック: サブモジュール直読み（サブモジュール駆動）
             string submodule = Path.GetFullPath(Path.Combine(Application.dataPath, "..", SubmoduleRelativeRoot));
-            if (Directory.Exists(Path.Combine(submodule, "DataBases")))
-                return submodule;
+            if (HasDatabases(submodule)) return submodule;
 
             return null;
         }
+
+        static bool HasDatabases(string root) =>
+            !string.IsNullOrEmpty(root) && Directory.Exists(Path.Combine(root, "DataBases"));
 
         public static List<NtCharacterRecord> LoadAll()
         {

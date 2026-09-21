@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -10,7 +12,8 @@ namespace NTsWallpaperEngine.Signage
 {
     /// <summary>
     /// サイネージ本体。創作DB（サブモジュール駆動）からレコードを読み込み、
-    /// 毎分（またはクリック／ゲームパッド入力時）にカードを切り替える。数字カウントアニメーションは必須要件（AGENTS.md 6章）。
+    /// 一定間隔（または入力時）にカードを切り替える。数字カウントアニメーションは必須要件（AGENTS.md 6章）。
+    /// 入力の定義は SignageInput、画面の操作UIは SignageHud（実行時に組む）。
     /// 旧 CharacterAssetsDB のアニメーション仕様（カウント演出・イージング・フェード）を踏襲。
     /// </summary>
     public class SignageController : MonoBehaviour
@@ -33,12 +36,16 @@ namespace NTsWallpaperEngine.Signage
         [Header("Switching")]
         [Tooltip("切替間隔（秒）。秒針と同期し、30なら秒針00/30、20なら00/20/40ちょうどで切り替わる（60の約数推奨）")]
         [SerializeField] int switchIntervalSeconds = 30;
-        [Tooltip("再生モード（ランダム／番号順）。実行中は M キー・右クリック・ゲームパッドの Y(北) で切替")]
+        [Tooltip("再生モード（ランダム／番号順）。実行中の切替は SignageInput の Mode（M・右クリック・パッドY）")]
         [SerializeField] PlaybackMode playbackMode = PlaybackMode.Random;
 
         [Header("Daily DB reload (RPi常時稼働向け)")]
         [Tooltip("毎日この時刻(時)にDBを再読込する。OS側の日次pull（scripts/rpi/update-creationsdb.sh）とセットで運用")]
         [SerializeField, Range(0, 23)] int dailyReloadHour = 4;
+
+        [Header("Controls overlay")]
+        [Tooltip("操作UI（SignageHud）の和文フォント。カード用とは別のフリーフォント（BIZ UDPGothic / OFL 1.1）")]
+        [SerializeField] TMP_FontAsset hudFont;
 
         [Header("Background design")]
         [Tooltip("ドット1周期のピクセル数（生成テクスチャ内）")]
@@ -50,19 +57,31 @@ namespace NTsWallpaperEngine.Signage
         [SerializeField, Range(0f, 1f)] float glowAlpha = 0.5f;
 
         List<NtCharacterRecord> _records = new List<NtCharacterRecord>();
-        List<NtCharacterRecord> _sorted = new List<NtCharacterRecord>();  // 番号順再生用
+        List<NtCharacterRecord> _sorted = new List<NtCharacterRecord>();  // 番号順再生・方向入力のページ送り用
         NtCharacterRecord _next;
-        int _lastIndex = -1;      // Random: _records / Sequential: _sorted のインデックス
         float _alpha;
         bool _isAnimating;
+        int _queuedStep;          // アニメ中に来た手動操作を1つだけ覚える（捨てると「押しても無反応」に見える）
+        bool _hasQueuedStep;
         long _lastSlot = -1;  // 壁時計同期用の秒スロット
         DateTime _lastReloadDate; // 日次リロードの実施日
         Texture2D _dotTexture, _gradientTexture, _glowTexture;
 
         System.Random _random = new System.Random();
 
-        // 入力（Input System）: 次のカード = 左クリック/タップ・パッド A(南)、再生モード切替 = 右クリック・M・パッド Y(北)
-        InputAction _nextAction, _modeAction;
+        SignageInput _input;      // バインドと操作方法の表（SignageInput）
+        SignageHud _hud;          // 通知・操作方法・長押しゲージ（実行時に組む）
+        Task<CreationsDbUpdater.Result> _dbUpdate;
+        bool _quitting;
+
+        const string PrefInterval = "signage.intervalSeconds";
+        const string PrefMode = "signage.playbackMode";
+
+        /// <summary>長押しの行き先。サイネージOSでは run-signage.sh が poweroff を指定する。</summary>
+        static bool PowerOffOnQuit =>
+            string.Equals(Environment.GetEnvironmentVariable("NTSWE_QUIT_ACTION"), "poweroff",
+                StringComparison.OrdinalIgnoreCase);
+        static string QuitLabel => PowerOffOnQuit ? "電源オフ" : "終了";
 
         void Awake()
         {
@@ -72,15 +91,15 @@ namespace NTsWallpaperEngine.Signage
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             foreach (var d in InputSystem.devices) InputSystem.EnableDevice(d);
 
-            _nextAction = new InputAction("NextCard", InputActionType.Button, "<Pointer>/press"); // マウス左・タッチ
-            _nextAction.AddBinding("<Gamepad>/buttonSouth");
-            _modeAction = new InputAction("TogglePlaybackMode", InputActionType.Button, "<Mouse>/rightButton");
-            _modeAction.AddBinding("<Keyboard>/m");
-            _modeAction.AddBinding("<Gamepad>/buttonNorth");
+            _input = new SignageInput();
+
+            // 現地で変えた設定は電源を切っても残す（サイネージは長押しで電源オフできる）
+            switchIntervalSeconds = PlayerPrefs.GetInt(PrefInterval, switchIntervalSeconds);
+            playbackMode = (PlaybackMode)PlayerPrefs.GetInt(PrefMode, (int)playbackMode);
         }
 
-        void OnEnable() { _nextAction.Enable(); _modeAction.Enable(); }
-        void OnDisable() { _nextAction.Disable(); _modeAction.Disable(); }
+        void OnEnable() => _input.Enable();
+        void OnDisable() => _input.Disable();
 
         void Start()
         {
@@ -91,14 +110,20 @@ namespace NTsWallpaperEngine.Signage
             _lastReloadDate = DateTime.Now.Date;
             SetupBackground();
             if (view) view.SetClock(DateTime.Now);
+            if (view && view.clockText)
+            {
+                _hud = SignageHud.Create(view.clockText.canvas, hudFont ? hudFont : view.clockText.font);
+                _hud.Toast("H・F1 ／ パッド Select で操作方法", 6f);
+            }
 
             if (_records.Count == 0)
             {
+                // 止めない: この状態こそ短押し（創作DBの取り直し）で復帰させたいので入力は生かしておく
                 Debug.LogError("[Signage] 表示できるレコードが0件。サブモジュール取得と同期状態を確認して。");
-                enabled = false;
+                _hud?.Toast("表示できるレコードが0件。Esc／Start／ホイール短押しで創作DBを取得", 20f);
                 return;
             }
-            StartCoroutine(AnimateCard(true));
+            StartCoroutine(AnimateCard(0, true));
         }
 
         void Update()
@@ -121,48 +146,191 @@ namespace NTsWallpaperEngine.Signage
                 if (!_isAnimating) StartCoroutine(AnimateCard());
             }
 
-            // クリック/タップ・パッドAでも切り替え（旧実装踏襲）
-            if (_nextAction.WasPressedThisFrame() && !_isAnimating)
-                StartCoroutine(AnimateCard());
-
-            if (_modeAction.WasPressedThisFrame())
-                TogglePlaybackMode();
+            HandleInput();
+            PollDbUpdate();
 
             // 日次リロード: OS側がpullした最新DBを毎日 dailyReloadHour 時に取り込む（常時稼働サイネージ向け）
             if (now.Date != _lastReloadDate && now.Hour >= dailyReloadHour && !_isAnimating)
             {
                 _lastReloadDate = now.Date;
-                var reloaded = CreationsDbLoader.LoadAll();
-                if (reloaded.Count > 0)
-                {
-                    _records = reloaded;
-                    RebuildSortedList();
-                    _lastIndex = -1;
-                    Debug.Log($"[Signage] 日次リロード完了: {reloaded.Count}件");
-                }
-                else
-                {
-                    Debug.LogWarning("[Signage] 日次リロードで0件だったため、現行データを継続使用");
-                }
+                ReloadRecords();
             }
         }
 
-        NtCharacterRecord PickNextRecord()
+        // ---- 入力 ----
+
+        void HandleInput()
+        {
+            if (_quitting) return;
+
+            if (_input.Next.WasPressedThisFrame()) RequestCard(0);
+            if (_input.PagePrev.WasPressedThisFrame()) RequestCard(-1);   // 方向入力: キャラ番号順に前
+            if (_input.PageNext.WasPressedThisFrame()) RequestCard(1);    // 　　　　　　　　　　　　後
+            if (_input.Mode.WasPressedThisFrame()) TogglePlaybackMode();
+
+            if (_input.IntervalCycle.WasPressedThisFrame())
+            {
+                int at = Array.IndexOf(SignageInput.IntervalChoices, switchIntervalSeconds);
+                SetInterval(SignageInput.IntervalChoices[(at + 1) % SignageInput.IntervalChoices.Length]);
+            }
+            for (int i = 0; i < _input.IntervalPick.Length; i++)
+                if (_input.IntervalPick[i].WasPressedThisFrame()) SetInterval(SignageInput.IntervalChoices[i]);
+
+            if (_input.Help.WasPressedThisFrame())
+                _hud?.ToggleHelp(SignageInput.HelpText(QuitLabel, StatusLine()));
+
+            switch (_input.PollSystem(out float hold))
+            {
+                case SignageInput.Press.Short: StartDbUpdate(); break;
+                case SignageInput.Press.Long: StartCoroutine(QuitOrPowerOff()); break;
+            }
+            _hud?.Hold(hold, $"長押しで{QuitLabel}…");
+        }
+
+        /// <summary>カード切替の要求。step=0 は再生モードに従う「次」、±1 はキャラ番号順の前後。</summary>
+        void RequestCard(int step)
+        {
+            if (_isAnimating) { _queuedStep = step; _hasQueuedStep = true; return; }
+            StartCoroutine(AnimateCard(step));
+        }
+
+        void SetInterval(int seconds)
+        {
+            switchIntervalSeconds = seconds;
+            _lastSlot = -1;                     // 変更直後に即切り替わらないよう次の境界から数え直す
+            PlayerPrefs.SetInt(PrefInterval, seconds);
+            PlayerPrefs.Save();
+            _hud?.Toast($"自動送り: {IntervalLabel(seconds)}");
+            Debug.Log($"[Signage] 自動送り間隔: {seconds}秒");
+        }
+
+        static string IntervalLabel(int seconds) => seconds >= 60 && seconds % 60 == 0
+            ? $"{seconds / 60}分" : $"{seconds}秒";
+
+        string StatusLine() =>
+            $"現在: 自動送り {IntervalLabel(switchIntervalSeconds)} ／ 再生モード " +
+            $"{(playbackMode == PlaybackMode.Random ? "ランダム" : "番号順")} ／ 表示対象 {_records.Count}件";
+
+        // ---- 創作DBの取り直し（短押し）----
+
+        void StartDbUpdate()
+        {
+            if (_dbUpdate != null && !_dbUpdate.IsCompleted) { _hud?.Toast("創作DBを更新中…"); return; }
+            _hud?.Toast("創作DBを更新中…", 120f);
+            Debug.Log("[Signage] 創作DB更新を開始");
+            _dbUpdate = Task.Run(() => CreationsDbUpdater.Run());   // 表示は止めない
+        }
+
+        void PollDbUpdate()
+        {
+            if (_dbUpdate == null || !_dbUpdate.IsCompleted) return;
+            var result = _dbUpdate.IsFaulted
+                ? new CreationsDbUpdater.Result
+                { Message = "創作DB更新に失敗: " + _dbUpdate.Exception?.GetBaseException().Message }
+                : _dbUpdate.Result;
+            _dbUpdate = null;
+
+            if (!result.Ok) { _hud?.Toast(result.Message, 6f); return; }
+
+            // 取得先が同梱データと違う場合もあるので、成功したら必ずそちらを読み直す
+            CreationsDbLoader.ExternalRootOverride = result.DataRoot;
+            int count = ReloadRecords();
+            _hud?.Toast(count > 0 ? $"{result.Message}（{count}件）" : result.Message, 5f);
+        }
+
+        int ReloadRecords()
+        {
+            var reloaded = CreationsDbLoader.LoadAll();
+            if (reloaded.Count == 0)
+            {
+                Debug.LogWarning("[Signage] 再読込で0件だったため、現行データを継続使用");
+                return 0;
+            }
+            _records = reloaded;
+            RebuildSortedList();
+            Debug.Log($"[Signage] 再読込完了: {reloaded.Count}件");
+            return reloaded.Count;
+        }
+
+        // ---- 終了・電源オフ（長押し）----
+
+        IEnumerator QuitOrPowerOff()
+        {
+            if (_quitting) yield break;
+            _quitting = true;
+            _hud?.Toast(PowerOffOnQuit ? "電源をオフします…" : "終了します…", 15f);
+            yield return new WaitForSecondsRealtime(0.7f);      // 文字を読ませてから落とす
+
+            if (PowerOffOnQuit)
+            {
+                string error = PowerOff();
+                if (error == null) yield break;                 // あとは systemd が止める
+                _quitting = false;
+                _hud?.Toast("電源オフに失敗: " + error, 6f);
+                yield break;
+            }
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
+        /// <summary>
+        /// tty1 のセッション内から呼ぶので polkit が許可する（sudo も sudoers 追加も不要。2026-09-21 実機で確認）。
+        /// 失敗したときだけ理由を返す。
+        /// </summary>
+        static string PowerOff()
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("systemctl", "poweroff")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardError = true,
+                };
+                using var process = System.Diagnostics.Process.Start(psi);
+                var stderr = process.StandardError.ReadToEndAsync();
+                if (!process.WaitForExit(15000)) return "応答なし";
+                if (process.ExitCode == 0) return null;
+                string message = stderr.Result.Trim();
+                return message.Length > 0 ? message : $"exit {process.ExitCode}";
+            }
+            catch (Exception e)
+            {
+                return e.Message;
+            }
+        }
+
+        /// <summary>次に出すレコード。step=0 は再生モードに従い、±1 はキャラ番号順の前後（方向入力）。</summary>
+        NtCharacterRecord PickNextRecord(int step)
         {
             if (_records.Count == 0) return null; // 同期直後など一時的に空のケースを防御
             if (_records.Count == 1) return _records[0];
 
-            if (playbackMode == PlaybackMode.Sequential)
+            if (step != 0)
             {
-                _lastIndex = (_lastIndex + 1) % _sorted.Count;
-                return _sorted[_lastIndex];
+                int at = IndexOf(_sorted, view.Current);
+                int n = _sorted.Count;
+                return _sorted[(((at < 0 ? 0 : at + step) % n) + n) % n];
             }
 
+            if (playbackMode == PlaybackMode.Sequential)
+                return _sorted[(IndexOf(_sorted, view.Current) + 1) % _sorted.Count];
+
+            int current = IndexOf(_records, view.Current);
             int index;
-            do { index = _random.Next(_records.Count); } while (index == _lastIndex);
-            _lastIndex = index;
+            do { index = _random.Next(_records.Count); } while (index == current);
             return _records[index];
         }
+
+        /// <summary>
+        /// 表示中のカードの位置。再読込するとレコードは別実体になるので、DB名＋Num表記で引き直す
+        /// （インデックスを覚えておくと、DB更新後に番号順ページ送りが飛ぶ）。
+        /// </summary>
+        static int IndexOf(List<NtCharacterRecord> list, NtCharacterRecord record) =>
+            record == null ? -1 : list.FindIndex(r => r.DbKey == record.DbKey && r.NumRaw == record.NumRaw);
 
         void RebuildSortedList()
         {
@@ -181,18 +349,15 @@ namespace NTsWallpaperEngine.Signage
 
         void TogglePlaybackMode()
         {
+            // 番号順は表示中の個体の次から続く（PickNextRecord が毎回現在位置を引き直すため、覚える値は無い）
             playbackMode = playbackMode == PlaybackMode.Random ? PlaybackMode.Sequential : PlaybackMode.Random;
-
-            // 番号順へ切り替えたら、現在表示中の個体から順番を継続する
-            if (playbackMode == PlaybackMode.Sequential && view && view.Current != null)
-                _lastIndex = _sorted.IndexOf(view.Current);
-            else
-                _lastIndex = -1;
-
+            PlayerPrefs.SetInt(PrefMode, (int)playbackMode);
+            PlayerPrefs.Save();
+            _hud?.Toast($"再生モード: {(playbackMode == PlaybackMode.Random ? "ランダム" : "番号順")}");
             Debug.Log($"[Signage] 再生モード: {playbackMode}");
         }
 
-        IEnumerator AnimateCard(bool onStarting = false)
+        IEnumerator AnimateCard(int step = 0, bool onStarting = false)
         {
             if (_isAnimating && !onStarting) yield break;
             _isAnimating = true;
@@ -215,8 +380,9 @@ namespace NTsWallpaperEngine.Signage
             }
 
             // 次レコードの決定・画像読込（バリアントはランダム）
-            _next = PickNextRecord();
+            _next = PickNextRecord(step);
             if (_next == null) { _isAnimating = false; yield break; }
+            Debug.Log($"[Signage] カード: {_next.NumRaw}" + (step != 0 ? $"（方向入力 {step:+#;-#}）" : ""));
             string imagePath = _next.ImagePaths[_random.Next(_next.ImagePaths.Count)];
             Texture2D texture = CreationsDbLoader.LoadTexture(imagePath);
             view.Apply(_next, texture);
@@ -252,6 +418,12 @@ namespace NTsWallpaperEngine.Signage
             view.SetTextProgress(1f);
             view.SetNumberFinal(); // 大型番号を原文表記（例 "222A"）へ着地
             _isAnimating = false;
+
+            if (_hasQueuedStep)   // アニメ中に押された分を1回だけ消化する
+            {
+                _hasQueuedStep = false;
+                StartCoroutine(AnimateCard(_queuedStep));
+            }
         }
 
         // ---- 背景デザイン（3層: 縦グラデーション / エッジ強調ドット / キャラ背後グロー）----
@@ -371,8 +543,7 @@ namespace NTsWallpaperEngine.Signage
 
         void OnDestroy()
         {
-            _nextAction?.Dispose();
-            _modeAction?.Dispose();
+            _input?.Dispose();
             if (_dotTexture) Destroy(_dotTexture);
             if (_gradientTexture) Destroy(_gradientTexture);
             if (_glowTexture) Destroy(_glowTexture);

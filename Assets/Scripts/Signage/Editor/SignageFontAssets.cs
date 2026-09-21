@@ -20,6 +20,14 @@ namespace NTsWallpaperEngine.Signage.EditorTools
         public const string PenchantAssetPath = OutputDir + "/PenchantManufacture SDF.asset";
         public const string SourceHanAssetPath = OutputDir + "/SourceHanSans-Medium SDF.asset";
 
+        /// <summary>
+        /// 操作UI（SignageHud）専用の和文フォント。カードの表示に使うフォント
+        /// （PenchantManufacture / SourceHanSans）とは分けてフリーフォントを使う（User 指定 2026-09-21）。
+        /// BIZ UDPGothic Regular — SIL Open Font License 1.1（Assets/Fonts/biz-udpgothic/OFL.txt）。
+        /// </summary>
+        public const string HudSourcePath = "Assets/Fonts/biz-udpgothic/BIZUDPGothic-Regular.ttf";
+        public const string HudAssetPath = OutputDir + "/BIZUDPGothic-Regular SDF.asset";
+
         /// <summary>PenchantManufacture の正はサブモジュール。Assets 側の .otf は git 管理外の同期コピー（.meta のみ追跡）。</summary>
         public const string PenchantSubmoduleDir = "PenchantManufacture_ImageAssets";
         public const string PenchantSubmoduleFont = PenchantSubmoduleDir + "/assets/fonts/PenchantManufacture.otf";
@@ -97,6 +105,7 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             Directory.CreateDirectory(OutputDir);
             CreateDynamicFontAsset(PenchantSourcePath, PenchantAssetPath, 90);
             CreateDynamicFontAsset(SourceHanSourcePath, SourceHanAssetPath, 72);
+            CreateDynamicFontAsset(HudSourcePath, HudAssetPath, 48);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }

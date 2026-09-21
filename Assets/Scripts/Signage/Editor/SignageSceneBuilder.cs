@@ -38,6 +38,9 @@ namespace NTsWallpaperEngine.Signage.EditorTools
                 SignageFontAssets.PenchantAssetPath, SignageFontAssets.PenchantSourcePath, 90);
             var sourceHan = SignageFontAssets.LoadOrCreate(
                 SignageFontAssets.SourceHanAssetPath, SignageFontAssets.SourceHanSourcePath, 72);
+            // 操作UI（SignageHud）専用の和文フォント。カード用とは別のフリーフォントを使う
+            var hudFont = SignageFontAssets.LoadOrCreate(
+                SignageFontAssets.HudAssetPath, SignageFontAssets.HudSourcePath, 48);
 
             // Class等にDB表記（和文）が混ざっても豆腐にならないよう、和文フォントをフォールバックに登録
             if (penchant && sourceHan)
@@ -160,6 +163,7 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             var controller = signageGo.GetComponent<SignageController>();
             var so = new SerializedObject(controller);
             so.FindProperty("view").objectReferenceValue = view;
+            so.FindProperty("hudFont").objectReferenceValue = hudFont;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             Directory.CreateDirectory("Assets/Scenes");

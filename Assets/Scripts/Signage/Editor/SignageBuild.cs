@@ -15,6 +15,7 @@ namespace NTsWallpaperEngine.Signage.EditorTools
     public static class SignageBuild
     {
         public const string OutputPath = "Builds/LinuxSignage/NTsWallpaperEngine.x86_64";
+        public const string UpdateScriptPath = "scripts/rpi/update-creationsdb.sh";
 
         [MenuItem("Signage/Build Linux x64 (RPi Signage)")]
         public static void BuildLinux64Menu() => BuildLinux64();
@@ -60,9 +61,14 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             BuildReport report = BuildPipeline.BuildPlayer(options);
             if (report.summary.result == BuildResult.Succeeded)
             {
+                string outDir = Path.GetDirectoryName(OutputPath);
                 // UnityConsole ランチャーはアプリ直下の icon.png をタイルに出す。カセットはビルド一式ごと運ばれる
                 if (File.Exists(SignageCapture.IconPath))
-                    File.Copy(SignageCapture.IconPath, Path.Combine(Path.GetDirectoryName(OutputPath), "icon.png"), true);
+                    File.Copy(SignageCapture.IconPath, Path.Combine(outDir, "icon.png"), true);
+                // 実行中の創作DB取り直し（Esc/Start/ホイール短押し）はこのスクリプトを叩く。
+                // NTsWallpaper OS では OS 側の /opt/ntswallpaper/update-creationsdb.sh が同じ正本。
+                if (File.Exists(UpdateScriptPath))
+                    File.Copy(UpdateScriptPath, Path.Combine(outDir, Path.GetFileName(UpdateScriptPath)), true);
                 Debug.Log($"[Signage] ビルド成功: {OutputPath} ({report.summary.totalSize / (1024 * 1024)} MB)\n" +
                           "docs/raspberrypi-handoff.md に従って「Raspberry Pi OS開発」へ引き渡して。");
             }

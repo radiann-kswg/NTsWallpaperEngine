@@ -48,15 +48,30 @@
 
 型番中の `IV` のようなローマ数字は、フォント収録のローマ数字グリフ（Ⅰ〜Ⅻ、13以上は `Ⅹ…`＋合成済み）へ差し替えてから表示します。
 
-## 切り替え
+## 切り替えと操作
 
 | | |
 | --- | --- |
-| 自動 | 既定 **30秒**ごと。**秒針同期**（実時刻を間隔で割ったスロット境界で発火するので、30なら毎分00/30秒ちょうど） |
-| 手動 | 画面を左クリック／タップ、またはゲームパッドの **A（南ボタン）** |
-| 再生モード | **Random**（直前と同じ個体は連続しない）⇄ **Sequential**（`Num` 昇順）を `M` キー・右クリック・ゲームパッドの **Y（北ボタン）** で切替。算術表記（`3x11`→33）は計算値、16進表記（`0xA`）はデコード値で通常番号の後ろに別グループとして並ぶ |
-| 入力 | Input System（`com.unity.inputsystem` 1.20.0、旧 Input Manager は無効）。RPi の X はウィンドウマネージャが無く窓がフォーカスを得ないため、`backgroundBehavior = IgnoreFocus` で入力を止めない。パッドは起動側の `SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1` も必須（`scripts/rpi/run-signage.sh` / UnityConsole の `ucon-run-app` が設定）。起動時に `[Signage] 入力デバイス:` を Player.log へ出す |
+| 自動 | 既定 **30秒**ごと。**秒針同期**（実時刻を間隔で割ったスロット境界で発火するので、30なら毎分00/30秒ちょうど）。実行中に **20秒 / 30秒 / 1分 / 2分** へ変えられ、選んだ値は次の起動にも残る（PlayerPrefs） |
+| 再生モード | **Random**（直前と同じ個体は連続しない）⇄ **Sequential**（`Num` 昇順）。算術表記（`3x11`→33）は計算値、16進表記（`0xA`）はデコード値で通常番号の後ろに別グループとして並ぶ。モードも次の起動に残る |
 | 日次リロード | 毎日 `dailyReloadHour`（既定 04時）にDBを読み直す。常時稼働のまま新キャラ・修正が反映され、失敗した日は直前のデータで継続する |
+
+**操作一覧**（定義は `Assets/Scripts/Signage/SignageInput.cs` の1か所。実行中は `H`・`F1`・パッド `Select` で画面にも出せる）
+
+| 操作 | キーボード | ゲームパッド | マウス |
+| --- | --- | --- | --- |
+| 次のカード | Space・Enter | A（南） | 左クリック |
+| 番号順で前／次 | ← ↑ ／ → ↓ | 十字・左スティック | －（マウスは非対応） |
+| 再生モード切替 | M | Y（北） | 右クリック |
+| 自動送り間隔 20秒/30秒/1分/2分 | 1〜4 | X（西）で巡回 | －（マウスは非対応） |
+| 操作方法の表示 | H・F1 | Select | － |
+| 創作DBの取り直し（短押し） | Esc | Start | ホイール押し込み |
+| 終了（長押し2秒） | Esc | Start | ホイール押し込み |
+
+- **長押しの行き先は起動側が決める**: 環境変数 `NTSWE_QUIT_ACTION=poweroff` が立っていれば `systemctl poweroff`（サイネージOS。tty1 セッション内から呼ぶので polkit が許可し、sudo は要らない）、無ければアプリ終了（UnityConsole ではランチャーへ戻る）。
+- **短押しの取り直し**は実行ファイルの隣の `update-creationsdb.sh`（OSの日次タイマーと同じ正本）を走らせ、取得できたらその場で読み直す（再起動しない）。取得先は `NTSWE_CREATIONSDB` があればそこ、無ければ `persistentDataPath/creationsdb`（UnityConsole 等・要 git）。
+- 入力は Input System（`com.unity.inputsystem` 1.20.0、旧 Input Manager は無効）。RPi の X はウィンドウマネージャが無く窓がフォーカスを得ないため、`backgroundBehavior = IgnoreFocus` で入力を止めない。**パッドは起動側の `SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1`、キーボードは起動側で X の入力フォーカスを `PointerRoot` にすることが必須**（`scripts/rpi/run-signage.sh` / UnityConsole の `ucon-run-app`。既定の `None` のままだとキー入力はどの窓にも配送されない）。起動時に `[Signage] 入力デバイス:` を Player.log へ出す
+- 長押しは「押されている状態」を見て、離上を 0.15 秒だけ様子見してから確定する。**X のキーリピートは「離上＋押下」の連打として届く**ので、押下エッジで測ると長押しが永遠に成立しない（2026-09-21 実機で確認）
 
 ## データの流れ（サブモジュール駆動）
 
@@ -71,7 +86,7 @@
   CreationsDbLoader → SignageController → SignageCardView（カードUI）
 ```
 
-- 読み込み先の優先順は **`NTSWE_CREATIONSDB` → `StreamingAssets/CreationsDB` → サブモジュール直読み**（エディタでの未同期時フォールバック）。
+- 読み込み先の優先順は **実行中に取り直した分 → `NTSWE_CREATIONSDB` → `persistentDataPath/creationsdb` → `StreamingAssets/CreationsDB` → サブモジュール直読み**（最後はエディタでの未同期時フォールバック）。
 - `StreamingAssets/CreationsDB/` は**git管理外の生成物**。手で編集しない。
 - 表示対象は `Progress` が `released` / `released(beta)` / `stillTentative` / `unreleased` の**いずれかで、かつ corefolder 画像を持つ**レコードだけ。
 - `SameModels_DBLink` を辿って null のフィールドを継承（`Num` / `Num_Badge` / `Progress` / `Images` は継承しない。循環リンクは防御済み）。
@@ -81,11 +96,11 @@
 
 <!-- roster:start -->
 
-**表示対象 105 体 / 画像 181 枚**（2026-09-06 時点。`Signage/Update README Roster` が自動更新）
+**表示対象 105 体 / 画像 182 枚**（2026-09-21 時点。`Signage/Update README Roster` が自動更新）
 
 | DB | 表示対象 | corefolder 画像 |
 | --- | --- | --- |
-| `db_Primary.json` | 90 | 162 |
+| `db_Primary.json` | 90 | 163 |
 | `db_SemiPrimary.json` | 9 | 13 |
 | `db_SelfSecondary.json` | 6 | 6 |
 
@@ -109,10 +124,10 @@ OSイメージへの組み込み・自動起動・DB日次pullのタイマー設
 
 | パス | 中身 |
 | --- | --- |
-| `Assets/Scripts/Signage/` | ランタイム。`CreationsDbLoader`（DB読込・enrich・テーマ色）/ `SignageController`（切替・アニメ駆動・背景生成）/ `SignageCardView`（カードUIとスクランブル） |
+| `Assets/Scripts/Signage/` | ランタイム。`CreationsDbLoader`（DB読込・enrich・テーマ色）/ `CreationsDbUpdater`（実行中のDB取り直し）/ `SignageController`（切替・アニメ駆動・背景生成）/ `SignageCardView`（カードUIとスクランブル）/ `SignageInput`（入力定義と操作表）/ `SignageHud`（操作方法・通知・長押しゲージ） |
 | `Assets/Scripts/Signage/Editor/` | `SignageSceneBuilder`（シーン自動構築）/ `SignageDbSync`・`SignageDbUpdate`（DB同期・更新）/ `SignageFontAssets`（フォント同期・TMP生成）/ `SignageBuild`（Linuxビルド）/ `SignageCapture`（README用の録画・収録表・ランチャーアイコン） |
 | `Assets/Scenes/SignageScene.unity` | 唯一のシーン。`Signage/Build Signage Scene` で作り直せる（手で組まない） |
-| `Assets/Fonts/` | PenchantManufacture（英数・型番）/ Source Han Sans（和文フォールバック）/ D-DIN |
+| `Assets/Fonts/` | PenchantManufacture（英数・型番）/ Source Han Sans（和文フォールバック）/ BIZ UDPGothic（操作UI専用・SIL OFL 1.1）/ D-DIN |
 | `100BeautiesLab_CreationsDB/` | 創作DBサブモジュール（sparse・**読み取り専用**） |
 | `PenchantManufacture_ImageAssets/` | フォントの正本サブモジュール（sparse）。`Assets/` 側の `.otf` は同期コピー（git管理外・`.meta` のみ追跡） |
 | `scripts/` | `setup-submodule.ps1/.sh`（クローン直後のsparse設定）/ `rpi/run-signage.sh`・`rpi/update-creationsdb.sh`（実機側） |

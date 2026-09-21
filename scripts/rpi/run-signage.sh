@@ -20,6 +20,28 @@ export MESA_GLSL_VERSION_OVERRIDE=330
 # 無いと Input System 上は Gamepad として認識されるのにボタンが一切届かない（2026-09-20 実機・仮想パッドで確認）
 export SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1
 
+# 長押し（Esc / パッドStart / ホイール押し込み）の行き先。サイネージ機は電源オフにする。
+export NTSWE_QUIT_ACTION=poweroff
+
+# X にウィンドウマネージャが無いため入力フォーカスが None のままで、キー入力はどの窓にも配送されない
+# （2026-09-21 実機実測: 仮想キーボードの M が無反応 → PointerRoot にした瞬間に届いた）。
+# ポインタ下の窓＝全画面のサイネージへキーが流れるよう PointerRoot にする。窓が出る前後で
+# 取り直されることがあるので数回入れる（コストはほぼゼロ）。
+focus_pointer_root() {
+  python3 - <<'PY' 2>/dev/null || true
+import ctypes, ctypes.util
+x = ctypes.CDLL(ctypes.util.find_library("X11"))
+x.XOpenDisplay.restype = ctypes.c_void_p
+x.XSetInputFocus.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
+x.XSync.argtypes = [ctypes.c_void_p, ctypes.c_int]
+d = x.XOpenDisplay(None)
+if d:
+    x.XSetInputFocus(d, 1, 2, 0)   # PointerRoot, RevertToPointerRoot, CurrentTime
+    x.XSync(d, 0)
+PY
+}
+( for wait in 2 15 45; do sleep "$wait"; focus_pointer_root; done ) &
+
 # box64 チューニング（安定性優先。問題があれば BIGBLOCK を 1 に下げる）
 export BOX64_DYNAREC_BIGBLOCK=2
 export BOX64_DYNAREC_SAFEFLAGS=1
