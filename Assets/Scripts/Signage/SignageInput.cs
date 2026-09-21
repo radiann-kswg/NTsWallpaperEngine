@@ -141,7 +141,8 @@ namespace NTsWallpaperEngine.Signage
             return sb.ToString();
         }
 
+        // 列位置は一番長い語（創作DB更新（短押し）／Space・Enter／十字・左スティック）が次の列に掛からない幅
         static string Row(string a, string k, string g, string m) =>
-            $"{a}<pos=38%>{k}<pos=64%>{g}<pos=86%>{m}";
+            $"{a}<pos=30%>{k}<pos=53%>{g}<pos=80%>{m}";
     }
 }
