@@ -211,41 +211,38 @@ namespace NTsWallpaperEngine.Signage
         }
 
         /// <summary>
-        /// クラス辞書（Class → Class_EN）の実体ファイル。同一スキーマの複数辞書を併合して使う。
-        /// dict_Triples.json は3桁番個体（223, 753 等）のクラスを収録する。
-        /// SignageDbSync（サブモジュール → StreamingAssets 同期）もこの一覧を参照する。
+        /// クラス辞書（Class → Class_EN）のファイル名パターン。ファイル名は列挙せず、見つかった辞書を全部読む
+        /// （DB側に「シンフォニー.X」用 dict_SymphonyX.json などが増えてもアプリ側の改修を要らなくするため）。
+        /// Class / Class_EN を持たない辞書（dict_Area 等）は併合時に素通りする。
+        /// SignageDbSync（サブモジュール → StreamingAssets 同期）もこのパターンを参照する。
         /// </summary>
-        public static readonly string[] ClassDictionaryFiles =
-        {
-            "dict_Class.json",
-            "dict_Triples.json",
-        };
+        public const string ClassDictionaryPattern = "dict_*.json";
 
         /// <summary>
-        /// グローバルクラス辞書（作品共通: data/Dictionaries/）。
-        /// レゾンデイトルカンパニー / シンフォニー.XVI 所属個体のクラスはこちらに収録されている。
-        /// 実体は root の一つ上の Dictionaries/（サブモジュール・Pi外部クローン）または
-        /// root/GlobalDictionaries/（StreamingAssets同期後）から読む。
+        /// 作品内辞書（root/Dictionaries/）→ グローバル辞書（作品共通: data/Dictionaries/）の順に返す。
+        /// グローバル側は root/GlobalDictionaries/（StreamingAssets同期後）か、
+        /// root の一つ上の Dictionaries/（サブモジュール・Pi外部クローン直読み）。
         /// </summary>
-        public static readonly string[] GlobalClassDictionaryFiles =
+        public static IEnumerable<string> ClassDictionaryPaths(string root)
         {
-            "dict_RaisondetreCompany.json",
-            "dict_SymphonyXVI.json",
-        };
+            string global = Path.Combine(root, "GlobalDictionaries");
+            if (!Directory.Exists(global))
+                global = Path.GetFullPath(Path.Combine(root, "..", "Dictionaries"));
+            foreach (string dir in new[] { Path.Combine(root, "Dictionaries"), global })
+            {
+                if (!Directory.Exists(dir)) continue;
+                var files = Directory.GetFiles(dir, ClassDictionaryPattern);
+                Array.Sort(files, StringComparer.Ordinal);   // 先勝ちの順序を環境に依らず固定
+                foreach (string f in files) yield return f;
+            }
+        }
 
         /// <summary>クラス辞書群（Class → Class_EN）を読み込んで併合する。無ければ空辞書。</summary>
         static Dictionary<string, string> LoadClassDictionary(string root)
         {
             var dict = new Dictionary<string, string>();
-            foreach (string fileName in ClassDictionaryFiles)
-                MergeClassDictionary(dict, Path.Combine(root, "Dictionaries", fileName), fileName);
-            foreach (string fileName in GlobalClassDictionaryFiles)
-            {
-                string path = Path.Combine(root, "GlobalDictionaries", fileName);            // StreamingAssets同期後
-                if (!File.Exists(path))
-                    path = Path.Combine(root, "..", "Dictionaries", fileName);               // サブモジュール/外部クローン直読み
-                MergeClassDictionary(dict, path, fileName);
-            }
+            foreach (string path in ClassDictionaryPaths(root))
+                MergeClassDictionary(dict, path, Path.GetFileName(path));
             return dict;
         }
 
@@ -314,7 +311,7 @@ namespace NTsWallpaperEngine.Signage
                 {
                     string name = (string)c;
                     if (string.IsNullOrEmpty(name)) continue;
-                    // クラス辞書群（ClassDictionaryFiles）の英文表記を優先（無い場合のみDB表記のまま）
+                    // クラス辞書群（ClassDictionaryPattern）の英文表記を優先（無い場合のみDB表記のまま）
                     record.ClassNames.Add(classDict.TryGetValue(name, out var en) ? en : name);
                 }
 

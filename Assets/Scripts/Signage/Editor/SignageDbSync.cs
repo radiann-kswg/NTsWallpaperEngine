@@ -41,26 +41,15 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             if (Directory.Exists(dst)) Directory.Delete(dst, true);
             Directory.CreateDirectory(Path.Combine(dst, "DataBases"));
 
-            // Class英文表記辞書（dict_Triples.json は3桁番個体のクラスを収録。一覧はローダ側が正）
-            foreach (string dictName in CreationsDbLoader.ClassDictionaryFiles)
+            // Class英文表記辞書（dict_*.json を全部。作品内 → Dictionaries/、作品共通 data/Dictionaries/ → GlobalDictionaries/）
+            if (!Directory.Exists(Path.Combine(src, "..", "Dictionaries")))
+                Debug.LogWarning("[Signage] グローバル辞書フォルダが無い（scripts/setup-submodule を再実行して sparse に /data/Dictionaries を追加）");
+            foreach (string dictSrc in CreationsDbLoader.ClassDictionaryPaths(src))
             {
-                string dictSrc = Path.Combine(src, "Dictionaries", dictName);
-                if (!File.Exists(dictSrc)) continue;
-                Directory.CreateDirectory(Path.Combine(dst, "Dictionaries"));
-                File.Copy(dictSrc, Path.Combine(dst, "Dictionaries", dictName), true);
-            }
-
-            // グローバルクラス辞書（data/Dictionaries/。レゾンデイトルカンパニー / シンフォニー.XVI 所属個体用）
-            foreach (string dictName in CreationsDbLoader.GlobalClassDictionaryFiles)
-            {
-                string dictSrc = Path.GetFullPath(Path.Combine(src, "..", "Dictionaries", dictName));
-                if (!File.Exists(dictSrc))
-                {
-                    Debug.LogWarning($"[Signage] グローバル辞書が無い: {dictSrc}（scripts/setup-submodule を再実行して sparse に /data/Dictionaries を追加）");
-                    continue;
-                }
-                Directory.CreateDirectory(Path.Combine(dst, "GlobalDictionaries"));
-                File.Copy(dictSrc, Path.Combine(dst, "GlobalDictionaries", dictName), true);
+                bool isGlobal = !Path.GetDirectoryName(dictSrc).Equals(Path.Combine(src, "Dictionaries"), System.StringComparison.OrdinalIgnoreCase);
+                string dir = Path.Combine(dst, isGlobal ? "GlobalDictionaries" : "Dictionaries");
+                Directory.CreateDirectory(dir);
+                File.Copy(dictSrc, Path.Combine(dir, Path.GetFileName(dictSrc)), true);
             }
 
             int copiedImages = 0, releasedCount = 0;
