@@ -19,6 +19,7 @@ namespace NTsWallpaperEngine.Signage.EditorTools
     ///   右下     = プロフィール（Gender / Class / Height / Concept Age — 旧シーン準拠）
     ///   左下     = 英語機体名
     ///   左上     = 時計
+    /// 同じ枠を Display 2 用にもう1枚作る（SignageCanvas2。2枚目のモニタがあるときだけ使われる）。
     /// </summary>
     public static class SignageSceneBuilder
     {
@@ -142,8 +143,9 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             clock.color = new Color(50f / 255f, 50f / 255f, 50f / 255f, 0.85f);
 
             // --- Controller / View ---
-            var signageGo = new GameObject("Signage", typeof(SignageCardView), typeof(SignageController));
-            var view = signageGo.GetComponent<SignageCardView>();
+            // カードは Canvas に載せる（画面ごとに Canvas ごと複製・停止できるように）
+            var view = canvasGo.AddComponent<SignageCardView>();
+            var signageGo = new GameObject("Signage", typeof(SignageController));
             view.background = bg;
             view.gradientOverlay = gradient;
             view.dotsOverlay = dots;
@@ -160,9 +162,25 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             view.modelNameEnText = modelNameEn;
             view.clockText = clock;
 
+            // --- Display 2: 同じ枠をもう1枚（2枚目のモニタに別の個体を出す。繋がっていなければ実行時に止まる）---
+            var canvas2Go = Object.Instantiate(canvasGo);
+            canvas2Go.name = "SignageCanvas2";
+            canvas2Go.GetComponent<Canvas>().targetDisplay = 1;
+            // 何も写さないカメラ。URP で Display 2 のフレームを確実に出すために置く
+            var cam2 = new GameObject("Display 2 Camera").AddComponent<Camera>();
+            cam2.transform.SetParent(canvas2Go.transform, false);
+            cam2.targetDisplay = 1;
+            cam2.clearFlags = CameraClearFlags.SolidColor;
+            cam2.backgroundColor = Color.black;
+            cam2.cullingMask = 0;
+            cam2.orthographic = true;
+
             var controller = signageGo.GetComponent<SignageController>();
             var so = new SerializedObject(controller);
-            so.FindProperty("view").objectReferenceValue = view;
+            var views = so.FindProperty("views");
+            views.arraySize = 2;
+            views.GetArrayElementAtIndex(0).objectReferenceValue = view;
+            views.GetArrayElementAtIndex(1).objectReferenceValue = canvas2Go.GetComponent<SignageCardView>();
             so.FindProperty("hudFont").objectReferenceValue = hudFont;
             so.ApplyModifiedPropertiesWithoutUndo();
 

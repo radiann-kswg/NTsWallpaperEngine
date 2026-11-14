@@ -18,7 +18,8 @@ namespace NTsWallpaperEngine.Signage
     /// </summary>
     public class SignageController : MonoBehaviour
     {
-        [SerializeField] SignageCardView view;
+        [Tooltip("画面ごとのカード。要素 i が Unity の Display i+1 に出る（SignageSceneBuilder が組む）")]
+        [SerializeField] SignageCardView[] views = new SignageCardView[0];
 
         [Header("Animation (旧CharacterAssetsDB準拠)")]
         [SerializeField] int numAnimDuration = 300;
@@ -58,7 +59,6 @@ namespace NTsWallpaperEngine.Signage
 
         List<NtCharacterRecord> _records = new List<NtCharacterRecord>();
         List<NtCharacterRecord> _sorted = new List<NtCharacterRecord>();  // 番号順再生・方向入力のページ送り用
-        NtCharacterRecord _next;
         float _alpha;
         bool _isAnimating;
         int _queuedStep;          // アニメ中に来た手動操作を1つだけ覚える（捨てると「押しても無反応」に見える）
@@ -99,6 +99,17 @@ namespace NTsWallpaperEngine.Signage
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             foreach (var d in InputSystem.devices) InputSystem.EnableDevice(d);
 
+            // 2枚目以降の画面（Display）は Activate しないと描かれない。繋がっていない画面のカードは止めて、
+            // 見えない演出に CPU を使わない。エディタは Display.displays が常に1枚なので全部残す。
+#if !UNITY_EDITOR
+            int screens = Mathf.Min(Display.displays.Length, views.Length);
+            for (int i = 1; i < screens; i++) Display.displays[i].Activate();
+            for (int i = screens; i < views.Length; i++) views[i].gameObject.SetActive(false);
+            Array.Resize(ref views, screens);
+            Debug.Log("[Signage] 画面: " + string.Join(", ", Display.displays.Select(d => $"{d.systemWidth}x{d.systemHeight}")) +
+                      $"（カード {screens}枚）");
+#endif
+
             _input = new SignageInput();
 
             // 現地で変えた設定は電源を切っても残す（サイネージは長押しで電源オフできる）
@@ -117,7 +128,8 @@ namespace NTsWallpaperEngine.Signage
             RebuildSortedList();
             _lastReloadDate = DateTime.Now.Date;
             SetupBackground();
-            if (view) view.SetClock(DateTime.Now);
+            foreach (var v in views) v.SetClock(DateTime.Now);
+            var view = views.Length > 0 ? views[0] : null;   // 操作UI（SignageHud）は Display 1 にだけ出す
             if (view && view.clockText)
             {
                 _hud = SignageHud.Create(view.clockText.canvas, hudFont ? hudFont : view.clockText.font);
@@ -139,7 +151,7 @@ namespace NTsWallpaperEngine.Signage
             var now = DateTime.Now;
 
             // 時計は毎フレーム更新（「:」の点滅・秒表示のため）
-            if (view) view.SetClock(now);
+            foreach (var v in views) v.SetClock(now);
 
             // 秒針同期の切替: 実時刻を間隔で割ったスロット境界（00/20/40 や 00/30）で発火
             int interval = Mathf.Max(5, switchIntervalSeconds);
@@ -312,26 +324,40 @@ namespace NTsWallpaperEngine.Signage
             }
         }
 
-        /// <summary>次に出すレコード。step=0 は再生モードに従い、±1 はキャラ番号順の前後（方向入力）。</summary>
-        NtCharacterRecord PickNextRecord(int step)
+        /// <summary>各画面に次に出すレコード。step=0 は再生モードに従い、±1 はキャラ番号順の前後（方向入力）。</summary>
+        NtCharacterRecord[] PickNextRecords(int step)
         {
-            if (_records.Count == 0) return null; // 同期直後など一時的に空のケースを防御
-            if (_records.Count == 1) return _records[0];
+            if (_records.Count == 0) return new NtCharacterRecord[0]; // 同期直後など一時的に空のケースを防御
+            int dir = step != 0 ? step : playbackMode == PlaybackMode.Sequential ? 1 : 0;
+            var list = dir != 0 ? _sorted : _records;
+            var current = views.Select(v => IndexOf(list, v.Current)).ToArray();
+            return PickNext(current, list.Count, dir, _random).Select(i => list[i]).ToArray();
+        }
 
-            if (step != 0)
+        /// <summary>
+        /// 各画面に次に出すレコードの位置。current[i] は画面 i に今出ている位置（無ければ -1）、count は候補の件数（1以上）。
+        /// dir≠0（番号順・方向入力）は画面0の位置から画面の枚数ぶん送り、画面0から順に並べる。
+        /// dir=0（ランダム）は、その画面の直前の個体と、この回に他の画面へ出す個体を避ける（件数が足りなければ諦める）。
+        /// SignageSelfCheck から検査する。
+        /// </summary>
+        public static int[] PickNext(int[] current, int count, int dir, System.Random random)
+        {
+            var next = new int[current.Length];
+            for (int i = 0; i < next.Length; i++)
             {
-                int at = IndexOf(_sorted, view.Current);
-                int n = _sorted.Count;
-                return _sorted[(((at < 0 ? 0 : at + step) % n) + n) % n];
+                if (dir != 0)
+                {
+                    int first = current[0] < 0 ? 0 : current[0] + dir * next.Length;
+                    next[i] = (((first + i) % count) + count) % count;
+                    continue;
+                }
+                int pick;
+                do { pick = random.Next(count); }
+                while ((count > i && Array.IndexOf(next, pick, 0, i) >= 0) ||
+                       (count > i + 1 && pick == current[i]));
+                next[i] = pick;
             }
-
-            if (playbackMode == PlaybackMode.Sequential)
-                return _sorted[(IndexOf(_sorted, view.Current) + 1) % _sorted.Count];
-
-            int current = IndexOf(_records, view.Current);
-            int index;
-            do { index = _random.Next(_records.Count); } while (index == current);
-            return _records[index];
+            return next;
         }
 
         /// <summary>
@@ -372,60 +398,73 @@ namespace NTsWallpaperEngine.Signage
             _isAnimating = true;
 
             // フェードアウト（数字はカウントアップしながら消える。スクランブルは大型番号のみ）
-            if (!onStarting && view.Current != null)
+            if (!onStarting && views.Length > 0 && views[0].Current != null)
             {
-                int baseNum = view.Current.NumValue;
                 while (_alpha > 0f)
                 {
-                    int shown = baseNum + Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - _alpha, acceleration));
-                    view.SetAnimatedNumber(shown);
-                    view.SetBigNumberScramble(_alpha);
-                    view.SetAlpha(_alpha);
+                    int counted = Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - _alpha, acceleration));
+                    foreach (var v in views)
+                    {
+                        v.SetAnimatedNumber(v.Current.NumValue + counted);
+                        v.SetBigNumberScramble(_alpha);
+                        v.SetAlpha(_alpha);
+                    }
                     _alpha -= Time.deltaTime / animationTime;
                     yield return null;
                 }
                 _alpha = 0f;
-                view.SetAlpha(0f);
+                foreach (var v in views) v.SetAlpha(0f);
             }
 
             // 次レコードの決定・画像読込（バリアントはランダム）
-            _next = PickNextRecord(step);
-            if (_next == null) { _isAnimating = false; yield break; }
-            Debug.Log($"[Signage] カード: {_next.NumRaw}" + (step != 0 ? $"（方向入力 {step:+#;-#}）" : ""));
-            string imagePath = _next.ImagePaths[_random.Next(_next.ImagePaths.Count)];
-            Texture2D texture = CreationsDbLoader.LoadTexture(imagePath);
-            view.Apply(_next, texture);
-            view.SetAlpha(0f);
+            var next = PickNextRecords(step);
+            if (next.Length == 0) { _isAnimating = false; yield break; }
+            Debug.Log($"[Signage] カード: {string.Join(" / ", next.Select(r => r.NumRaw))}" +
+                      (step != 0 ? $"（方向入力 {step:+#;-#}）" : ""));
+            for (int i = 0; i < views.Length; i++)
+            {
+                string imagePath = next[i].ImagePaths[_random.Next(next[i].ImagePaths.Count)];
+                views[i].Apply(next[i], CreationsDbLoader.LoadTexture(imagePath));
+                views[i].SetAlpha(0f);
+            }
 
             // フェードイン（数字はカウントダウンで収束、文字はスクランブル→確定）
             // 文字スクランブルは経過時間ベースで進行し、textAnimSpeed < 1 の場合は
             // フェード完了後も継続して全文の演出を見せる。
-            int target = _next.NumValue;
             float textDuration = animationTime / Mathf.Max(0.05f, textAnimSpeed);
             float elapsed = 0f;
             while (_alpha < 1f)
             {
-                int shown = target - Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - _alpha, acceleration));
-                view.SetAnimatedNumber(shown);
-                view.SetTextProgress(elapsed / textDuration);
-                view.SetAlpha(_alpha);
+                int counted = Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - _alpha, acceleration));
+                foreach (var v in views)
+                {
+                    v.SetAnimatedNumber(v.Current.NumValue - counted);
+                    v.SetTextProgress(elapsed / textDuration);
+                    v.SetAlpha(_alpha);
+                }
                 elapsed += Time.deltaTime;
                 _alpha += Time.deltaTime / animationTime;
                 yield return null;
             }
             _alpha = 1f;
-            view.SetAlpha(1f);
-            view.SetAnimatedNumber(target);
+            foreach (var v in views)
+            {
+                v.SetAlpha(1f);
+                v.SetAnimatedNumber(v.Current.NumValue);
+            }
 
             // 残りの文字スクランブルを完走させる
             while (elapsed < textDuration)
             {
-                view.SetTextProgress(elapsed / textDuration);
+                foreach (var v in views) v.SetTextProgress(elapsed / textDuration);
                 elapsed += Time.deltaTime;
                 yield return null;
             }
-            view.SetTextProgress(1f);
-            view.SetNumberFinal(); // 大型番号を原文表記（例 "222A"）へ着地
+            foreach (var v in views)
+            {
+                v.SetTextProgress(1f);
+                v.SetNumberFinal(); // 大型番号を原文表記（例 "222A"）へ着地
+            }
             _isAnimating = false;
 
             if (_hasQueuedStep)   // アニメ中に押された分を1回だけ消化する
@@ -439,25 +478,30 @@ namespace NTsWallpaperEngine.Signage
 
         public void SetupBackground() // SignageCapture（エディタでのカード撮影）からも呼ぶ
         {
+            foreach (var v in views) SetupBackground(v);
+        }
+
+        void SetupBackground(SignageCardView view)   // テクスチャは全画面で共有する
+        {
             if (!view) return;
 
             if (view.gradientOverlay)
             {
-                _gradientTexture = CreateVerticalGradientTexture();
+                if (!_gradientTexture) _gradientTexture = CreateVerticalGradientTexture();
                 view.gradientOverlay.texture = _gradientTexture;
                 view.gradientOverlay.uvRect = new Rect(0f, 0f, 1f, 1f);
             }
 
             if (view.dotsOverlay)
             {
-                _dotTexture = CreateEdgeDotsTexture(960, 540);
+                if (!_dotTexture) _dotTexture = CreateEdgeDotsTexture(960, 540);
                 view.dotsOverlay.texture = _dotTexture;
                 view.dotsOverlay.uvRect = new Rect(0f, 0f, 1f, 1f);
             }
 
             if (view.characterGlow)
             {
-                _glowTexture = CreateRadialGlowTexture(512, glowAlpha);
+                if (!_glowTexture) _glowTexture = CreateRadialGlowTexture(512, glowAlpha);
                 view.characterGlow.texture = _glowTexture;
                 view.characterGlow.color = Color.white;
             }
