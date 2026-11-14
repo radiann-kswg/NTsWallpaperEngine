@@ -9,6 +9,7 @@ namespace NTsWallpaperEngine.Signage
     /// サイネージの入力定義（Input System）。マウス／キーボード／ゲームパッドを同じ操作へ束ねる。
     /// **バインドと操作方法UIの表をこのクラスだけで持つ**（片方を直して説明とズレるのを防ぐため）。
     /// 長押し／短押しの判定もここに置く（Esc・Start・ホイール押し込みが同じ扱い）。
+    /// 2画面のときは同時押しで操作する画面を絞る（Shift／LT = Display 1、Ctrl／RT = Display 2）。
     /// </summary>
     public sealed class SignageInput : IDisposable
     {
@@ -22,7 +23,7 @@ namespace NTsWallpaperEngine.Signage
 
         public enum Press { None, Short, Long }
 
-        public readonly InputAction Next, PagePrev, PageNext, Mode, IntervalCycle, Help, System;
+        public readonly InputAction Next, PagePrev, PageNext, Mode, IntervalCycle, Help, System, Display1, Display2;
         public readonly InputAction[] IntervalPick = new InputAction[IntervalChoices.Length];
 
         /// <summary>離上をこの秒数だけ様子見してから確定する（X のキーリピート対策。下の PollSystem 参照）。</summary>
@@ -48,6 +49,9 @@ namespace NTsWallpaperEngine.Signage
             Help = Add("Help", "<Keyboard>/h", "<Keyboard>/f1", "<Gamepad>/select");
             // 短押し=創作DB更新 / 長押し=終了（サイネージOSでは電源オフ）
             System = Add("System", "<Keyboard>/escape", "<Gamepad>/start", "<Mouse>/middleButton");
+            // 同時押しで操作する画面を絞る（Shift・Ctrl は左右どちらでも）
+            Display1 = Add("Display1", "<Keyboard>/shift", "<Gamepad>/leftTrigger");
+            Display2 = Add("Display2", "<Keyboard>/ctrl", "<Gamepad>/rightTrigger");
         }
 
         InputAction Add(string name, params string[] paths)
@@ -61,6 +65,16 @@ namespace NTsWallpaperEngine.Signage
         public void Enable() { foreach (var a in _all) a.Enable(); }
         public void Disable() { foreach (var a in _all) a.Disable(); }
         public void Dispose() { foreach (var a in _all) a.Dispose(); _all.Clear(); }
+
+        /// <summary>同時押し中か（操作対象の札を出すかどうかに使う）。</summary>
+        public bool ModifierHeld => Display1.IsPressed() || Display2.IsPressed();
+
+        /// <summary>いま操作が効く画面のビット集合（bit i = Display i+1）。</summary>
+        public int TargetMask(int screens) => Targets(Display1.IsPressed(), Display2.IsPressed(), screens);
+
+        /// <summary>判定の本体（自己チェックから叩く）。1画面・同時押し無し・両方押しは全画面。</summary>
+        public static int Targets(bool display1, bool display2, int screens) =>
+            screens < 2 || display1 == display2 ? (1 << screens) - 1 : display1 ? 1 : 2;
 
         /// <summary>
         /// System（Esc / Start / ホイール押し込み）の短押し・長押しを毎フレーム1回だけ評価する。
@@ -129,12 +143,21 @@ namespace NTsWallpaperEngine.Signage
             ("創作DB更新（短押し）", "Esc",      "Start",            "ホイール押し"),
         };
 
-        /// <summary>操作方法パネルの本文。最後の行（長押し）だけ機体ごとに文言が変わる。</summary>
-        public static string HelpText(string quitLabel, string status)
+        /// <summary>
+        /// 操作方法パネルの本文。長押しの行だけ機体ごとに文言が変わる。
+        /// 2画面のときは、出す画面（screen。0始まり）の名前と、画面の絞り方の行を足す。
+        /// </summary>
+        public static string HelpText(string quitLabel, string status, int screen = 0, int screens = 1)
         {
             var sb = new System.Text.StringBuilder();
-            sb.Append("<b>操作方法</b>\n\n");
+            sb.Append("<b>操作方法</b>").Append(screens > 1 ? $" ― この画面は Display {screen + 1}" : "").Append("\n\n");
             sb.Append(Row("操作", "キーボード", "ゲームパッド", "マウス")).Append('\n');
+            if (screens > 1)
+            {
+                sb.Append(Row("Display 1 だけ", "Shift＋操作", "LT＋操作", "Shift＋操作")).Append('\n');
+                sb.Append(Row("Display 2 だけ", "Ctrl＋操作", "RT＋操作", "Ctrl＋操作")).Append('\n');
+                sb.Append("<size=85%>同時押しなしは両方の画面。創作DB更新と長押しは常に全体</size>\n\n");
+            }
             foreach (var r in Rows) sb.Append(Row(r.action, r.keyboard, r.pad, r.mouse)).Append('\n');
             sb.Append(Row(quitLabel + "（長押し）", "Esc", "Start", "ホイール押し")).Append('\n');
             sb.Append('\n').Append("<size=85%>").Append(status).Append("</size>");

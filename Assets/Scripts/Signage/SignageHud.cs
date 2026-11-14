@@ -5,23 +5,29 @@ using UnityEngine.UI;
 namespace NTsWallpaperEngine.Signage
 {
     /// <summary>
-    /// 操作用のオーバーレイ（操作方法パネル・通知トースト・長押しゲージ）。
+    /// 操作用のオーバーレイ（操作方法パネル・通知トースト・長押しゲージ・操作対象の札）。画面（Canvas）ごとに1つ。
     /// シーンには置かず実行時に Canvas 直下へ組む（カードのレイアウトを触らずに済み、
     /// 既定では何も出ないので README のプレビューにも影響しない）。
     /// </summary>
     public sealed class SignageHud : MonoBehaviour
     {
-        const float ToastSeconds = 3.5f;
+        public const float ToastSeconds = 3.5f;
         const float HelpSeconds = 20f;   // 出しっぱなしで放置されないよう自動で引っ込める
+        const float ToastY = 26f;
+        const float ToastRise = 8f;      // 通知が出るときに浮き上がる距離
 
         RectTransform _toastBox, _gaugeFill, _helpBox;
+        CanvasGroup _toastGroup, _helpGroup;
+        GameObject _chip;
         TMP_Text _toastText, _helpText;
         float _toastUntil, _helpUntil;
+        float _toastShown, _helpShown;   // 出入りの進み具合（0=消えている, 1=出ている）
         bool _holding;
 
-        public bool HelpVisible => _helpBox && _helpBox.gameObject.activeSelf;
+        public bool HelpVisible => Time.unscaledTime < _helpUntil;
 
-        public static SignageHud Create(Canvas canvas, TMP_FontAsset font)
+        /// <param name="chipLabel">操作対象の札に出す画面名（例 "Display 1"）。</param>
+        public static SignageHud Create(Canvas canvas, TMP_FontAsset font, string chipLabel)
         {
             var go = new GameObject("SignageHud", typeof(RectTransform));
             var rect = (RectTransform)go.transform;
@@ -31,15 +37,17 @@ namespace NTsWallpaperEngine.Signage
             rect.offsetMin = rect.offsetMax = Vector2.zero;
             rect.SetAsLastSibling();                       // カードより手前
             var hud = go.AddComponent<SignageHud>();
-            hud.Build(font);
+            hud.Build(font, chipLabel);
             return hud;
         }
 
-        void Build(TMP_FontAsset font)
+        void Build(TMP_FontAsset font, string chipLabel)
         {
             // --- トースト（下端中央）---
-            _toastBox = Panel("Toast", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 26f),
+            _toastBox = Panel("Toast", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, ToastY),
                 new Vector2(420f, 44f), 0.88f);
+            _toastGroup = _toastBox.gameObject.AddComponent<CanvasGroup>();
+            _toastGroup.alpha = 0f;
             _toastText = Label(_toastBox, font, 22f, TextAlignmentOptions.Center);
             _toastText.rectTransform.offsetMin = new Vector2(16f, 4f);
             _toastText.rectTransform.offsetMax = new Vector2(-16f, -4f);
@@ -54,15 +62,24 @@ namespace NTsWallpaperEngine.Signage
             _gaugeFill.sizeDelta = new Vector2(0f, 5f);
             fill.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.85f);
 
+            // --- 操作対象の札（上端中央＝時計と型番の間。キャラ画像に被らない。同時押し中だけ出す）---
+            var chip = Panel("TargetChip", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -18f),
+                new Vector2(150f, 36f), 0.88f);
+            Label(chip, font, 22f, TextAlignmentOptions.Center).text = chipLabel;
+            _chip = chip.gameObject;
+
             // --- 操作方法パネル（中央）---
             _helpBox = Panel("Help", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero,
                 new Vector2(720f, 320f), 0.94f);
+            _helpGroup = _helpBox.gameObject.AddComponent<CanvasGroup>();
+            _helpGroup.alpha = 0f;
             _helpText = Label(_helpBox, font, 20f, TextAlignmentOptions.TopLeft);
             _helpText.rectTransform.offsetMin = new Vector2(24f, 20f);
             _helpText.rectTransform.offsetMax = new Vector2(-24f, -20f);
             _helpText.lineSpacing = 18f;
 
             _toastBox.gameObject.SetActive(false);
+            _chip.SetActive(false);
             _helpBox.gameObject.SetActive(false);
         }
 
@@ -99,7 +116,10 @@ namespace NTsWallpaperEngine.Signage
             return text;
         }
 
-        /// <summary>画面下に短く出す通知。</summary>
+        /// <summary>
+        /// 画面下に短く出す通知。表示中に呼ぶと文字だけ入れ替わる（出る動きはやり直さない。
+        /// 間隔の連打などでガタつかせないため）。
+        /// </summary>
         public void Toast(string message, float seconds = ToastSeconds)
         {
             _holding = false;
@@ -125,23 +145,59 @@ namespace NTsWallpaperEngine.Signage
             _gaugeFill.sizeDelta = new Vector2(_toastBox.sizeDelta.x * progress, 5f);
         }
 
-        public void ToggleHelp(string text)
+        /// <summary>操作対象の札。押した瞬間に対象が分かることが役目なので、動かさずに即出して即消す。</summary>
+        public void ShowChip(bool on)
         {
-            if (HelpVisible) { _helpBox.gameObject.SetActive(false); return; }
+            if (_chip.activeSelf != on) _chip.SetActive(on);
+        }
+
+        /// <summary>操作方法パネルを出す（text が null なら引っ込める）。</summary>
+        public void ShowHelp(string text)
+        {
+            if (text == null) { _helpUntil = 0f; return; }
             _helpText.text = text;
             _helpBox.gameObject.SetActive(true);
+            _helpText.ForceMeshUpdate();
+            _helpBox.sizeDelta = new Vector2(720f, _helpText.preferredHeight + 40f);   // 行数は画面の枚数で変わる
             _helpUntil = Time.unscaledTime + HelpSeconds;
         }
 
         void Update()
         {
-            if (_toastBox.gameObject.activeSelf && Time.unscaledTime > _toastUntil)
+            // 出入りの動きは透明度と小さな移動・拡縮だけ（Pi 4B は 15〜30fps で、0.2 秒でも数コマしか無い）。
+            // 値が変わったフレームにだけ書く（毎フレーム書くと Canvas の作り直しが走り続ける）
+            bool toastOn = Time.unscaledTime < _toastUntil;
+            float toast = Approach(_toastShown, toastOn);
+            if (toast != _toastShown)
+            {
+                _toastShown = _toastGroup.alpha = toast;
+                _toastBox.anchoredPosition = new Vector2(0f, ToastY - ToastRise * (1f - toast));
+            }
+            if (!toastOn && toast <= 0f && _toastBox.gameObject.activeSelf)
             {
                 _toastBox.gameObject.SetActive(false);
                 _holding = false;
                 _gaugeFill.sizeDelta = new Vector2(0f, 5f);
             }
-            if (HelpVisible && Time.unscaledTime > _helpUntil) _helpBox.gameObject.SetActive(false);
+
+            float help = Approach(_helpShown, HelpVisible);
+            if (help != _helpShown)
+            {
+                _helpShown = _helpGroup.alpha = help;
+                _helpBox.localScale = Vector3.one * (0.97f + 0.03f * help);   // 中央基準で少しだけ広がる
+            }
+            if (!HelpVisible && help <= 0f && _helpBox.gameObject.activeSelf) _helpBox.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// 出入りの進み具合を目標（出す=1／消す=0）へ寄せる。最初が速く、途中で向きが変わっても値が飛ばない。
+        /// 出るときは約 0.2 秒、消えるときは約 0.15 秒で落ち着く（消えるほうを速く）。
+        /// </summary>
+        static float Approach(float value, bool visible)
+        {
+            float target = visible ? 1f : 0f;
+            value = Mathf.Lerp(target, value, Mathf.Exp(-Time.unscaledDeltaTime * (visible ? 15f : 20f)));
+            return Mathf.Abs(target - value) < 0.01f ? target : value;
         }
     }
 }

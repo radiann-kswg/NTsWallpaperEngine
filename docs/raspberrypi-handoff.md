@@ -101,6 +101,7 @@ WantedBy=graphical-session.target
 - 操作は マウス / キーボード / ゲームパッド の3系統（Input System）。**一覧は実行中に `H`・`F1`・パッド `Select` で画面に出る**（正本は `Assets/Scripts/Signage/SignageInput.cs`、README にも表がある）。
   次のカード = 左クリック・Space/Enter・A(南) ／ 番号順の前後 = 矢印・十字・左スティック ／ 再生モード = 右クリック・M・Y(北) ／
   自動送り間隔 = 1〜4・X(西) ／ 創作DB取り直し = 短押し（Esc・Start・ホイール押し込み） ／ 終了・電源オフ・再起動 = 同じ入力の長押し2秒（どれになるかは `NTSWE_QUIT_ACTION`）。
+  2画面のときは Shift／LT＋操作で Display 1 だけ、Ctrl／RT＋操作で Display 2 だけに効く（同時押し無しは両方。再生モードと自動送り間隔は画面ごと）。
 - カードは創作DB（db_Primary / db_SemiPrimary / db_SelfSecondary）から自動形成。corefolder画像・型番・名前・機体名・テーマ色を表示。
 - 数字部分はカウントアップ/ダウンのアニメーション付き。
 - 時計（HH mm）を左上に常時表示。

@@ -52,10 +52,10 @@
 
 | | |
 | --- | --- |
-| 自動 | 既定 **30秒**ごと。**秒針同期**（実時刻を間隔で割ったスロット境界で発火するので、30なら毎分00/30秒ちょうど）。実行中に **20秒 / 30秒 / 1分 / 2分** へ変えられ、選んだ値は次の起動にも残る（PlayerPrefs） |
+| 自動 | 既定 **30秒**ごと。**秒針同期**（実時刻を間隔で割ったスロット境界で発火するので、30なら毎分00/30秒ちょうど）。実行中に **20秒 / 30秒 / 1分 / 2分** へ変えられ、選んだ値は次の起動にも残る（PlayerPrefs）。2画面のときは画面ごとに持つ |
 | 再生モード | **Random**（直前と同じ個体は連続しない）⇄ **Sequential**（`Num` 昇順）。算術表記（`3x11`→33）は計算値、16進表記（`0xA`）はデコード値で通常番号の後ろに別グループとして並ぶ。モードも次の起動に残る |
 | 日次リロード | 毎日 `dailyReloadHour`（既定 04時）にDBを読み直す。常時稼働のまま新キャラ・修正が反映され、失敗した日は直前のデータで継続する |
-| 2画面 | 起動時にモニタが2枚繋がっていれば、2枚目（Unity の Display 2）に**別の個体**のカードを同時に出す。番号順・方向入力は Display 1 の続き（2枚ずつ送る）、ランダムは互いに重ならない個体。切り替えは2枚同時で、操作UIは Display 1 のみ。1枚だけなら従来どおり（Display 2 用のカードは止まる）。枚数は起動時に決まる |
+| 2画面 | 起動時にモニタが2枚繋がっていれば、2枚目（Unity の Display 2）に**別の個体**のカードを同時に出す。**再生モードと自動送り間隔は画面ごと**に持ち、同時押しで片方だけ操作できる（下の表）。同じ瞬間に切り替わる画面はひと組で、番号順は Display 1 の続きに揃い（2枚ずつ送る）、片方だけなら自分の位置から前後へ1つ。ランダムは他の画面に出ている個体と重ならない。通知と操作方法は操作が効いた画面にだけ出る。1枚だけなら従来どおり（Display 2 用のカードは止まり、同時押しは無視される）。枚数は起動時に決まる |
 
 **操作一覧**（定義は `Assets/Scripts/Signage/SignageInput.cs` の1か所。実行中は `H`・`F1`・パッド `Select` で画面にも出せる）
 
@@ -68,7 +68,10 @@
 | 操作方法の表示 | H・F1 | Select | － |
 | 創作DBの取り直し（短押し） | Esc | Start | ホイール押し込み |
 | 終了・電源オフ・再起動（長押し2秒） | Esc | Start | ホイール押し込み |
+| Display 1 だけ操作（2画面のとき） | Shift＋操作 | LT＋操作 | Shift＋クリック |
+| Display 2 だけ操作（2画面のとき） | Ctrl＋操作 | RT＋操作 | Ctrl＋クリック |
 
+- **2画面のときの同時押し**: 同時押し無し（または両方押し）は両方の画面に効く。押している間は対象の画面の上端に `Display 1` / `Display 2` の札が出るので、どのモニタが何番かはそれで分かる（起動時の通知にも出る）。創作DBの取り直しと長押しは常に全体。設定は画面ごとに保存し、Display 2 は初回だけ Display 1 の値を引き継ぐ。
 - **長押しの行き先は起動側が決める**: 環境変数 `NTSWE_QUIT_ACTION` が `poweroff` なら `systemctl poweroff`、`reboot` なら `systemctl reboot`（サイネージOS。tty1 セッション内から呼ぶので polkit が許可し、sudo は要らない）、それ以外・未設定ならアプリ終了（UnityConsole ではランチャーへ戻る）。NTsWallpaper OS では `/boot/firmware/ntswallpaper.conf` の `LONG_PRESS_ACTION`（既定 `poweroff`）で選ぶ。
 - **短押しの取り直し**は実行ファイルの隣の `update-creationsdb.sh`（OSの日次タイマーと同じ正本）を走らせ、取得できたらその場で読み直す（再起動しない）。取得先は `NTSWE_CREATIONSDB` があればそこ、無ければ `persistentDataPath/creationsdb`（UnityConsole 等・要 git）。
 - 入力は Input System（`com.unity.inputsystem` 1.20.0、旧 Input Manager は無効）。RPi の X はウィンドウマネージャが無く窓がフォーカスを得ないため、`backgroundBehavior = IgnoreFocus` で入力を止めない。**パッドは起動側の `SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1`、キーボードは起動側で X の入力フォーカスを `PointerRoot` にすることが必須**（`scripts/rpi/run-signage.sh` / UnityConsole の `ucon-run-app`。既定の `None` のままだとキー入力はどの窓にも配送されない）。起動時に `[Signage] 入力デバイス:` を Player.log へ出す
@@ -125,7 +128,7 @@ OSイメージへの組み込み・自動起動・DB日次pullのタイマー設
 
 | パス | 中身 |
 | --- | --- |
-| `Assets/Scripts/Signage/` | ランタイム。`CreationsDbLoader`（DB読込・enrich・テーマ色）/ `CreationsDbUpdater`（実行中のDB取り直し）/ `SignageController`（切替・アニメ駆動・背景生成）/ `SignageCardView`（カードUIとスクランブル）/ `SignageInput`（入力定義と操作表）/ `SignageHud`（操作方法・通知・長押しゲージ） |
+| `Assets/Scripts/Signage/` | ランタイム。`CreationsDbLoader`（DB読込・enrich・テーマ色）/ `CreationsDbUpdater`（実行中のDB取り直し）/ `SignageController`（切替・アニメ駆動・背景生成）/ `SignageCardView`（カードUIとスクランブル）/ `SignageInput`（入力定義と操作表）/ `SignageHud`（操作方法・通知・長押しゲージ・操作対象の札。画面ごと） |
 | `Assets/Scripts/Signage/Editor/` | `SignageSceneBuilder`（シーン自動構築）/ `SignageDbSync`・`SignageDbUpdate`（DB同期・更新）/ `SignageFontAssets`（フォント同期・TMP生成）/ `SignageBuild`（Linuxビルド）/ `SignageCapture`（README用の録画・収録表・ランチャーアイコン） |
 | `Assets/Scenes/SignageScene.unity` | 唯一のシーン。`Signage/Build Signage Scene` で作り直せる（手で組まない） |
 | `Assets/Fonts/` | PenchantManufacture（英数・型番）/ Source Han Sans（和文フォールバック）/ BIZ UDPGothic（操作UI専用・SIL OFL 1.1）/ D-DIN |

@@ -35,9 +35,9 @@ namespace NTsWallpaperEngine.Signage
         }
 
         [Header("Switching")]
-        [Tooltip("切替間隔（秒）。秒針と同期し、30なら秒針00/30、20なら00/20/40ちょうどで切り替わる（60の約数推奨）")]
+        [Tooltip("切替間隔（秒）の初期値。秒針と同期し、30なら秒針00/30、20なら00/20/40ちょうどで切り替わる（60の約数推奨）。実行中は画面ごとに変えられる")]
         [SerializeField] int switchIntervalSeconds = 30;
-        [Tooltip("再生モード（ランダム／番号順）。実行中の切替は SignageInput の Mode（M・右クリック・パッドY）")]
+        [Tooltip("再生モード（ランダム／番号順）の初期値。実行中の切替は SignageInput の Mode（M・右クリック・パッドY）で、画面ごとに持つ")]
         [SerializeField] PlaybackMode playbackMode = PlaybackMode.Random;
 
         [Header("Daily DB reload (RPi常時稼働向け)")]
@@ -59,23 +59,27 @@ namespace NTsWallpaperEngine.Signage
 
         List<NtCharacterRecord> _records = new List<NtCharacterRecord>();
         List<NtCharacterRecord> _sorted = new List<NtCharacterRecord>();  // 番号順再生・方向入力のページ送り用
-        float _alpha;
-        bool _isAnimating;
-        int _queuedStep;          // アニメ中に来た手動操作を1つだけ覚える（捨てると「押しても無反応」に見える）
-        bool _hasQueuedStep;
-        long _lastSlot = -1;  // 壁時計同期用の秒スロット
+        // 画面ごとの再生設定と切り替えの状態（要素 i = Display i+1）。画面の集合はビットで持つ（bit i = Display i+1）
+        int[] _interval;
+        PlaybackMode[] _mode;
+        long[] _lastSlot;         // 壁時計同期用の秒スロット（-1 = 次の境界から数え直す）
+        int _animating;           // 切り替え演出の途中の画面
+        int _queuedMask, _queuedStep;   // アニメ中に来た手動操作を1つだけ覚える（捨てると「押しても無反応」に見える）
+        int All => (1 << views.Length) - 1;
         DateTime _lastReloadDate; // 日次リロードの実施日
         Texture2D _dotTexture, _gradientTexture, _glowTexture;
 
         System.Random _random = new System.Random();
 
         SignageInput _input;      // バインドと操作方法の表（SignageInput）
-        SignageHud _hud;          // 通知・操作方法・長押しゲージ（実行時に組む）
+        SignageHud[] _huds;       // 通知・操作方法・長押しゲージ・操作対象の札（画面ごと。実行時に組む）
         Task<CreationsDbUpdater.Result> _dbUpdate;
         bool _quitting;
 
         const string PrefInterval = "signage.intervalSeconds";
         const string PrefMode = "signage.playbackMode";
+        /// <summary>Display 1 は従来のキーのまま（1画面機の保存値をそのまま使う）。2枚目以降は番号を付ける。</summary>
+        static string PrefKey(string key, int screen) => screen == 0 ? key : $"{key}.{screen + 1}";
 
         /// <summary>
         /// 長押しの行き先（systemctl に渡す動詞）。poweroff / reboot 以外・未設定はアプリ終了（UnityConsole ではランチャーへ）。
@@ -112,9 +116,18 @@ namespace NTsWallpaperEngine.Signage
 
             _input = new SignageInput();
 
-            // 現地で変えた設定は電源を切っても残す（サイネージは長押しで電源オフできる）
-            switchIntervalSeconds = PlayerPrefs.GetInt(PrefInterval, switchIntervalSeconds);
-            playbackMode = (PlaybackMode)PlayerPrefs.GetInt(PrefMode, (int)playbackMode);
+            // 現地で変えた設定は電源を切っても残す（サイネージは長押しで電源オフできる）。
+            // 2枚目以降でまだ保存が無い画面は Display 1 の値を引き継ぐ
+            _interval = new int[views.Length];
+            _mode = new PlaybackMode[views.Length];
+            _lastSlot = new long[views.Length];
+            _huds = new SignageHud[views.Length];
+            for (int i = 0; i < views.Length; i++)
+            {
+                _interval[i] = PlayerPrefs.GetInt(PrefKey(PrefInterval, i), i > 0 ? _interval[0] : switchIntervalSeconds);
+                _mode[i] = (PlaybackMode)PlayerPrefs.GetInt(PrefKey(PrefMode, i), (int)(i > 0 ? _mode[0] : playbackMode));
+                _lastSlot[i] = -1;
+            }
         }
 
         void OnEnable() => _input.Enable();
@@ -129,21 +142,22 @@ namespace NTsWallpaperEngine.Signage
             _lastReloadDate = DateTime.Now.Date;
             SetupBackground();
             foreach (var v in views) v.SetClock(DateTime.Now);
-            var view = views.Length > 0 ? views[0] : null;   // 操作UI（SignageHud）は Display 1 にだけ出す
-            if (view && view.clockText)
+            for (int i = 0; i < views.Length; i++)   // 操作UI（SignageHud）は画面ごと。2画面なら起動時にどちらが Display 何番かも出す
             {
-                _hud = SignageHud.Create(view.clockText.canvas, hudFont ? hudFont : view.clockText.font);
-                _hud.Toast("H・F1 ／ パッド Select で操作方法", 6f);
+                var clock = views[i].clockText;
+                if (!clock) continue;
+                _huds[i] = SignageHud.Create(clock.canvas, hudFont ? hudFont : clock.font, $"Display {i + 1}");
+                _huds[i].Toast((views.Length > 1 ? $"Display {i + 1}｜" : "") + "H・F1 ／ パッド Select で操作方法", 6f);
             }
 
             if (_records.Count == 0)
             {
                 // 止めない: この状態こそ短押し（創作DBの取り直し）で復帰させたいので入力は生かしておく
                 Debug.LogError("[Signage] 表示できるレコードが0件。サブモジュール取得と同期状態を確認して。");
-                _hud?.Toast("表示できるレコードが0件。Esc／Start／ホイール短押しで創作DBを取得", 20f);
+                Toast(All, "表示できるレコードが0件。Esc／Start／ホイール短押しで創作DBを取得", 20f);
                 return;
             }
-            StartCoroutine(AnimateCard(0, true));
+            StartCoroutine(AnimateCard(All));
         }
 
         void Update()
@@ -153,24 +167,23 @@ namespace NTsWallpaperEngine.Signage
             // 時計は毎フレーム更新（「:」の点滅・秒表示のため）
             foreach (var v in views) v.SetClock(now);
 
-            // 秒針同期の切替: 実時刻を間隔で割ったスロット境界（00/20/40 や 00/30）で発火
-            int interval = Mathf.Max(5, switchIntervalSeconds);
-            long slot = (long)now.TimeOfDay.TotalSeconds / interval;
-            if (_lastSlot < 0)
+            // 秒針同期の切替: 実時刻を間隔で割ったスロット境界（00/20/40 や 00/30）で発火。
+            // 間隔は画面ごとで、同じ瞬間に境界を迎えた画面はひと組で切り替える
+            int due = 0;
+            for (int i = 0; i < views.Length; i++)
             {
-                _lastSlot = slot; // 起動直後の即切替を防止（次の境界から同期開始）
+                long slot = (long)now.TimeOfDay.TotalSeconds / Mathf.Max(5, _interval[i]);
+                if (_lastSlot[i] >= 0 && slot != _lastSlot[i]) due |= 1 << i;   // -1（起動直後・間隔の変更直後）は次の境界から
+                _lastSlot[i] = slot;
             }
-            else if (slot != _lastSlot)
-            {
-                _lastSlot = slot; // アニメ中に境界を跨いだ場合はその回をスキップ（次の境界で再同期）
-                if (!_isAnimating) StartCoroutine(AnimateCard());
-            }
+            due &= ~_animating;   // アニメ中に境界を跨いだ画面はその回をスキップ（次の境界で再同期）
+            if (due != 0) StartCoroutine(AnimateCard(due));
 
             HandleInput();
             PollDbUpdate();
 
             // 日次リロード: OS側がpullした最新DBを毎日 dailyReloadHour 時に取り込む（常時稼働サイネージ向け）
-            if (now.Date != _lastReloadDate && now.Hour >= dailyReloadHour && !_isAnimating)
+            if (now.Date != _lastReloadDate && now.Hour >= dailyReloadHour && _animating == 0)
             {
                 _lastReloadDate = now.Date;
                 ReloadRecords();
@@ -183,60 +196,91 @@ namespace NTsWallpaperEngine.Signage
         {
             if (_quitting) return;
 
-            if (_input.Next.WasPressedThisFrame()) RequestCard(0);
-            if (_input.PagePrev.WasPressedThisFrame()) RequestCard(-1);   // 方向入力: キャラ番号順に前
-            if (_input.PageNext.WasPressedThisFrame()) RequestCard(1);    // 　　　　　　　　　　　　後
-            if (_input.Mode.WasPressedThisFrame()) TogglePlaybackMode();
+            // 同時押しで操作する画面を絞る（Shift／LT = Display 1、Ctrl／RT = Display 2、無し・両方 = 全画面）。
+            // 押している間は、対象の画面に札を出す（どのモニタが Display 何番かをここで知る）
+            int target = _input.TargetMask(views.Length);
+            bool chip = views.Length > 1 && _input.ModifierHeld;
+            for (int i = 0; i < _huds.Length; i++) _huds[i]?.ShowChip(chip && (target & 1 << i) != 0);
+
+            if (_input.Next.WasPressedThisFrame()) RequestCard(target, 0);
+            if (_input.PagePrev.WasPressedThisFrame()) RequestCard(target, -1);   // 方向入力: キャラ番号順に前
+            if (_input.PageNext.WasPressedThisFrame()) RequestCard(target, 1);    // 　　　　　　　　　　　　後
+            if (_input.Mode.WasPressedThisFrame()) TogglePlaybackMode(target);
 
             if (_input.IntervalCycle.WasPressedThisFrame())
             {
-                int at = Array.IndexOf(SignageInput.IntervalChoices, switchIntervalSeconds);
-                SetInterval(SignageInput.IntervalChoices[(at + 1) % SignageInput.IntervalChoices.Length]);
+                int at = Array.IndexOf(SignageInput.IntervalChoices, _interval[Screens(target).First()]);
+                SetInterval(target, SignageInput.IntervalChoices[(at + 1) % SignageInput.IntervalChoices.Length]);
             }
             for (int i = 0; i < _input.IntervalPick.Length; i++)
-                if (_input.IntervalPick[i].WasPressedThisFrame()) SetInterval(SignageInput.IntervalChoices[i]);
+                if (_input.IntervalPick[i].WasPressedThisFrame()) SetInterval(target, SignageInput.IntervalChoices[i]);
 
             if (_input.Help.WasPressedThisFrame())
-                _hud?.ToggleHelp(SignageInput.HelpText(QuitLabel, StatusLine()));
+            {
+                bool show = !Screens(target).Any(i => _huds[i] && _huds[i].HelpVisible);
+                foreach (int i in Screens(target))
+                    _huds[i]?.ShowHelp(show ? SignageInput.HelpText(QuitLabel, StatusLine(), i, views.Length) : null);
+            }
 
             switch (_input.PollSystem(out float hold))
             {
                 case SignageInput.Press.Short: StartDbUpdate(); break;
                 case SignageInput.Press.Long: StartCoroutine(QuitOrShutdown()); break;
             }
-            _hud?.Hold(hold, $"長押しで{QuitLabel}…");
+            foreach (var hud in _huds) hud?.Hold(hold, $"長押しで{QuitLabel}…");
+        }
+
+        /// <summary>ビット集合に入っている画面の番号（0始まり）。</summary>
+        IEnumerable<int> Screens(int mask) => Enumerable.Range(0, views.Length).Where(i => (mask & 1 << i) != 0);
+
+        /// <summary>ログ用の画面名（例 [D1] / [D1+D2]）。実機試験がどの画面に効いたかをこれで見る。</summary>
+        string Tag(int mask) => "[D" + string.Join("+D", Screens(mask).Select(i => i + 1)) + "]";
+
+        /// <summary>通知は操作が効いた画面にだけ出す。</summary>
+        void Toast(int mask, string message, float seconds = SignageHud.ToastSeconds)
+        {
+            foreach (int i in Screens(mask)) _huds[i]?.Toast(message, seconds);
         }
 
         /// <summary>カード切替の要求。step=0 は再生モードに従う「次」、±1 はキャラ番号順の前後。</summary>
-        void RequestCard(int step)
+        void RequestCard(int mask, int step)
         {
-            if (_isAnimating) { _queuedStep = step; _hasQueuedStep = true; return; }
-            StartCoroutine(AnimateCard(step));
+            if ((_animating & mask) != 0) { _queuedMask = mask; _queuedStep = step; return; }
+            StartCoroutine(AnimateCard(mask, step));
         }
 
-        void SetInterval(int seconds)
+        void SetInterval(int mask, int seconds)
         {
-            switchIntervalSeconds = seconds;
-            _lastSlot = -1;                     // 変更直後に即切り替わらないよう次の境界から数え直す
-            PlayerPrefs.SetInt(PrefInterval, seconds);
+            foreach (int i in Screens(mask))
+            {
+                _interval[i] = seconds;
+                _lastSlot[i] = -1;              // 変更直後に即切り替わらないよう次の境界から数え直す
+                PlayerPrefs.SetInt(PrefKey(PrefInterval, i), seconds);
+            }
             PlayerPrefs.Save();
-            _hud?.Toast($"自動送り: {IntervalLabel(seconds)}");
-            Debug.Log($"[Signage] 自動送り間隔: {seconds}秒");
+            Toast(mask, $"自動送り: {IntervalLabel(seconds)}");
+            Debug.Log($"[Signage] 自動送り間隔: {seconds}秒 {Tag(mask)}");
         }
 
         static string IntervalLabel(int seconds) => seconds >= 60 && seconds % 60 == 0
             ? $"{seconds / 60}分" : $"{seconds}秒";
 
-        string StatusLine() =>
-            $"現在: 自動送り {IntervalLabel(switchIntervalSeconds)} ／ 再生モード " +
-            $"{(playbackMode == PlaybackMode.Random ? "ランダム" : "番号順")} ／ 表示対象 {_records.Count}件";
+        static string ModeLabel(PlaybackMode mode) => mode == PlaybackMode.Random ? "ランダム" : "番号順";
+
+        string StatusLine()
+        {
+            string Setting(int i) => $"自動送り {IntervalLabel(_interval[i])} ／ 再生モード {ModeLabel(_mode[i])}";
+            return views.Length == 1
+                ? $"現在: {Setting(0)} ／ 表示対象 {_records.Count}件"
+                : string.Join("\n", Screens(All).Select(i => $"Display {i + 1}: {Setting(i)}")) + $"\n表示対象 {_records.Count}件";
+        }
 
         // ---- 創作DBの取り直し（短押し）----
 
         void StartDbUpdate()
         {
-            if (_dbUpdate != null && !_dbUpdate.IsCompleted) { _hud?.Toast("創作DBを更新中…"); return; }
-            _hud?.Toast("創作DBを更新中…", 120f);
+            if (_dbUpdate != null && !_dbUpdate.IsCompleted) { Toast(All, "創作DBを更新中…"); return; }
+            Toast(All, "創作DBを更新中…", 120f);
             Debug.Log("[Signage] 創作DB更新を開始");
             _dbUpdate = Task.Run(() => CreationsDbUpdater.Run());   // 表示は止めない
         }
@@ -250,12 +294,12 @@ namespace NTsWallpaperEngine.Signage
                 : _dbUpdate.Result;
             _dbUpdate = null;
 
-            if (!result.Ok) { _hud?.Toast(result.Message, 6f); return; }
+            if (!result.Ok) { Toast(All, result.Message, 6f); return; }
 
             // 取得先が同梱データと違う場合もあるので、成功したら必ずそちらを読み直す
             CreationsDbLoader.ExternalRootOverride = result.DataRoot;
             int count = ReloadRecords();
-            _hud?.Toast(count > 0 ? $"{result.Message}（{count}件）" : result.Message, 5f);
+            Toast(All, count > 0 ? $"{result.Message}（{count}件）" : result.Message, 5f);
         }
 
         int ReloadRecords()
@@ -278,7 +322,7 @@ namespace NTsWallpaperEngine.Signage
         {
             if (_quitting) yield break;
             _quitting = true;
-            _hud?.Toast($"{QuitLabel}します…", 15f);
+            Toast(All, $"{QuitLabel}します…", 15f);
             yield return new WaitForSecondsRealtime(0.7f);      // 文字を読ませてから落とす
 
             if (SystemVerb != null)
@@ -286,7 +330,7 @@ namespace NTsWallpaperEngine.Signage
                 string error = Systemctl(SystemVerb);
                 if (error == null) yield break;                 // あとは systemd が止める
                 _quitting = false;
-                _hud?.Toast($"{QuitLabel}に失敗: {error}", 6f);
+                Toast(All, $"{QuitLabel}に失敗: {error}", 6f);
                 yield break;
             }
 #if UNITY_EDITOR
@@ -324,38 +368,50 @@ namespace NTsWallpaperEngine.Signage
             }
         }
 
-        /// <summary>各画面に次に出すレコード。step=0 は再生モードに従い、±1 はキャラ番号順の前後（方向入力）。</summary>
-        NtCharacterRecord[] PickNextRecords(int step)
+        /// <summary>
+        /// 各画面に次に出すレコード（mask に無い画面は今のまま）。step=0 は画面ごとの再生モードに従い、
+        /// ±1 はキャラ番号順の前後（方向入力）。
+        /// </summary>
+        NtCharacterRecord[] PickNextRecords(int mask, int step)
         {
             if (_records.Count == 0) return new NtCharacterRecord[0]; // 同期直後など一時的に空のケースを防御
-            int dir = step != 0 ? step : playbackMode == PlaybackMode.Sequential ? 1 : 0;
-            var list = dir != 0 ? _sorted : _records;
-            var current = views.Select(v => IndexOf(list, v.Current)).ToArray();
-            return PickNext(current, list.Count, dir, _random).Select(i => list[i]).ToArray();
+            var current = views.Select(v => IndexOf(_sorted, v.Current)).ToArray();
+            var dirs = _mode.Select(m => step != 0 ? step : m == PlaybackMode.Sequential ? 1 : 0).ToArray();
+            return PickNext(current, _sorted.Count, dirs, mask, _random).Select(i => i < 0 ? null : _sorted[i]).ToArray();
         }
 
         /// <summary>
-        /// 各画面に次に出すレコードの位置。current[i] は画面 i に今出ている位置（無ければ -1）、count は候補の件数（1以上）。
-        /// dir≠0（番号順・方向入力）は画面0の位置から画面の枚数ぶん送り、画面0から順に並べる。
-        /// dir=0（ランダム）は、その画面の直前の個体と、この回に他の画面へ出す個体を避ける（件数が足りなければ諦める）。
+        /// 各画面に次に出すレコードの位置。current[i] は画面 i に今出ている位置（無ければ -1）、count は候補の件数（1以上）、
+        /// dirs[i] は画面 i の進み方（0=ランダム、±1=番号順・方向入力）、mask は今回切り替える画面（それ以外は current のまま返す）。
+        /// 番号順の画面はひと組として扱い、組の先頭の画面の位置から組の枚数ぶん送って順に並べる
+        /// （2画面同時なら Display 1 の続きへ揃い、片方だけなら自分の位置から ±1）。
+        /// ランダムの画面は、自分の直前の個体と、他の画面に出る（出ている）個体を避ける（件数が足りなければ諦める）。
         /// SignageSelfCheck から検査する。
         /// </summary>
-        public static int[] PickNext(int[] current, int count, int dir, System.Random random)
+        public static int[] PickNext(int[] current, int count, int[] dirs, int mask, System.Random random)
         {
-            var next = new int[current.Length];
-            for (int i = 0; i < next.Length; i++)
+            var next = (int[])current.Clone();
+            var switching = Enumerable.Range(0, next.Length).Where(i => (mask & 1 << i) != 0).ToArray();
+            int group = switching.Count(i => dirs[i] != 0), first = 0, placed = 0, decided = ~mask;
+            foreach (int i in switching.OrderBy(s => dirs[s] == 0))   // 番号順を先に決める（ランダム側がそれを避けられるように）
             {
-                if (dir != 0)
+                if (dirs[i] != 0)
                 {
-                    int first = current[0] < 0 ? 0 : current[0] + dir * next.Length;
-                    next[i] = (((first + i) % count) + count) % count;
-                    continue;
+                    if (placed == 0) first = current[i] < 0 ? 0 : current[i] + dirs[i] * group;
+                    next[i] = (((first + placed++) % count) + count) % count;
                 }
-                int pick;
-                do { pick = random.Next(count); }
-                while ((count > i && Array.IndexOf(next, pick, 0, i) >= 0) ||
-                       (count > i + 1 && pick == current[i]));
-                next[i] = pick;
+                else
+                {
+                    // 他の画面の個体: 切り替えない画面は今出ているもの、この回に先に決めた画面は決めたもの
+                    var taken = Enumerable.Range(0, next.Length)
+                        .Where(j => j != i && (decided & 1 << j) != 0 && next[j] >= 0).Select(j => next[j]).ToArray();
+                    int pick;
+                    do { pick = random.Next(count); }
+                    while ((count > taken.Length && Array.IndexOf(taken, pick) >= 0) ||
+                           (count > taken.Length + 1 && pick == current[i]));
+                    next[i] = pick;
+                }
+                decided |= 1 << i;
             }
             return next;
         }
@@ -382,46 +438,56 @@ namespace NTsWallpaperEngine.Signage
             });
         }
 
-        void TogglePlaybackMode()
+        void TogglePlaybackMode(int mask)
         {
-            // 番号順は表示中の個体の次から続く（PickNextRecord が毎回現在位置を引き直すため、覚える値は無い）
-            playbackMode = playbackMode == PlaybackMode.Random ? PlaybackMode.Sequential : PlaybackMode.Random;
-            PlayerPrefs.SetInt(PrefMode, (int)playbackMode);
+            // 番号順は表示中の個体の次から続く（PickNextRecord が毎回現在位置を引き直すため、覚える値は無い）。
+            // 複数の画面をまとめて切り替えるときは先頭の画面の逆へ揃える（画面ごとに反転すると入れ替わるだけになる）
+            var mode = _mode[Screens(mask).First()] == PlaybackMode.Random ? PlaybackMode.Sequential : PlaybackMode.Random;
+            foreach (int i in Screens(mask))
+            {
+                _mode[i] = mode;
+                PlayerPrefs.SetInt(PrefKey(PrefMode, i), (int)mode);
+            }
             PlayerPrefs.Save();
-            _hud?.Toast($"再生モード: {(playbackMode == PlaybackMode.Random ? "ランダム" : "番号順")}");
-            Debug.Log($"[Signage] 再生モード: {playbackMode}");
+            Toast(mask, $"再生モード: {ModeLabel(mode)}");
+            Debug.Log($"[Signage] 再生モード: {mode} {Tag(mask)}");
         }
 
-        IEnumerator AnimateCard(int step = 0, bool onStarting = false)
+        /// <summary>
+        /// mask の画面をひと組で切り替える（同じ瞬間に切り替わる画面は同じ組）。組が違えば並行して走るので、
+        /// 呼ぶ側は対象の画面が演出の途中でない（_animating に入っていない）ことを確かめてから呼ぶ。
+        /// </summary>
+        IEnumerator AnimateCard(int mask, int step = 0)
         {
-            if (_isAnimating && !onStarting) yield break;
-            _isAnimating = true;
+            _animating |= mask;
+            var group = Screens(mask).Select(i => views[i]).ToArray();
+            float alpha = 1f;
 
-            // フェードアウト（数字はカウントアップしながら消える。スクランブルは大型番号のみ）
-            if (!onStarting && views.Length > 0 && views[0].Current != null)
+            // フェードアウト（数字はカウントアップしながら消える。スクランブルは大型番号のみ）。まだ何も出していなければ飛ばす
+            if (group.All(v => v.Current != null))
             {
-                while (_alpha > 0f)
+                while (alpha > 0f)
                 {
-                    int counted = Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - _alpha, acceleration));
-                    foreach (var v in views)
+                    int counted = Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - alpha, acceleration));
+                    foreach (var v in group)
                     {
                         v.SetAnimatedNumber(v.Current.NumValue + counted);
-                        v.SetBigNumberScramble(_alpha);
-                        v.SetAlpha(_alpha);
+                        v.SetBigNumberScramble(alpha);
+                        v.SetAlpha(alpha);
                     }
-                    _alpha -= Time.deltaTime / animationTime;
+                    alpha -= Time.deltaTime / animationTime;
                     yield return null;
                 }
-                _alpha = 0f;
-                foreach (var v in views) v.SetAlpha(0f);
+                foreach (var v in group) v.SetAlpha(0f);
             }
+            alpha = 0f;
 
             // 次レコードの決定・画像読込（バリアントはランダム）
-            var next = PickNextRecords(step);
-            if (next.Length == 0) { _isAnimating = false; yield break; }
-            Debug.Log($"[Signage] カード: {string.Join(" / ", next.Select(r => r.NumRaw))}" +
-                      (step != 0 ? $"（方向入力 {step:+#;-#}）" : ""));
-            for (int i = 0; i < views.Length; i++)
+            var next = PickNextRecords(mask, step);
+            if (next.Length == 0) { _animating &= ~mask; yield break; }
+            Debug.Log($"[Signage] カード: {string.Join(" / ", Screens(mask).Select(i => next[i].NumRaw))}" +
+                      (step != 0 ? $"（方向入力 {step:+#;-#}）" : "") + " " + Tag(mask));
+            foreach (int i in Screens(mask))
             {
                 string imagePath = next[i].ImagePaths[_random.Next(next[i].ImagePaths.Count)];
                 views[i].Apply(next[i], CreationsDbLoader.LoadTexture(imagePath));
@@ -433,21 +499,20 @@ namespace NTsWallpaperEngine.Signage
             // フェード完了後も継続して全文の演出を見せる。
             float textDuration = animationTime / Mathf.Max(0.05f, textAnimSpeed);
             float elapsed = 0f;
-            while (_alpha < 1f)
+            while (alpha < 1f)
             {
-                int counted = Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - _alpha, acceleration));
-                foreach (var v in views)
+                int counted = Mathf.FloorToInt(numAnimDuration * Mathf.Pow(1f - alpha, acceleration));
+                foreach (var v in group)
                 {
                     v.SetAnimatedNumber(v.Current.NumValue - counted);
                     v.SetTextProgress(elapsed / textDuration);
-                    v.SetAlpha(_alpha);
+                    v.SetAlpha(alpha);
                 }
                 elapsed += Time.deltaTime;
-                _alpha += Time.deltaTime / animationTime;
+                alpha += Time.deltaTime / animationTime;
                 yield return null;
             }
-            _alpha = 1f;
-            foreach (var v in views)
+            foreach (var v in group)
             {
                 v.SetAlpha(1f);
                 v.SetAnimatedNumber(v.Current.NumValue);
@@ -456,21 +521,23 @@ namespace NTsWallpaperEngine.Signage
             // 残りの文字スクランブルを完走させる
             while (elapsed < textDuration)
             {
-                foreach (var v in views) v.SetTextProgress(elapsed / textDuration);
+                foreach (var v in group) v.SetTextProgress(elapsed / textDuration);
                 elapsed += Time.deltaTime;
                 yield return null;
             }
-            foreach (var v in views)
+            foreach (var v in group)
             {
                 v.SetTextProgress(1f);
                 v.SetNumberFinal(); // 大型番号を原文表記（例 "222A"）へ着地
             }
-            _isAnimating = false;
+            _animating &= ~mask;
 
-            if (_hasQueuedStep)   // アニメ中に押された分を1回だけ消化する
+            // アニメ中に押された分を1回だけ消化する（対象の画面がどれも空いてから）
+            if (_queuedMask != 0 && (_queuedMask & _animating) == 0)
             {
-                _hasQueuedStep = false;
-                StartCoroutine(AnimateCard(_queuedStep));
+                int queued = _queuedMask;
+                _queuedMask = 0;
+                StartCoroutine(AnimateCard(queued, _queuedStep));
             }
         }
 
