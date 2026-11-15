@@ -41,15 +41,24 @@ namespace NTsWallpaperEngine.Signage.EditorTools
             if (Directory.Exists(dst)) Directory.Delete(dst, true);
             Directory.CreateDirectory(Path.Combine(dst, "DataBases"));
 
-            // Class英文表記辞書（dict_*.json を全部。作品内 → Dictionaries/、作品共通 data/Dictionaries/ → GlobalDictionaries/）
+            // Class英文表記辞書（辞書カタログ db_meta.json と、そこに宣言されたクラス辞書。サブフォルダは保つ。
+            // 作品内 → Dictionaries/、作品共通 data/Dictionaries/ → GlobalDictionaries/）
             if (!Directory.Exists(Path.Combine(src, "..", "Dictionaries")))
                 Debug.LogWarning("[Signage] グローバル辞書フォルダが無い（scripts/setup-submodule を再実行して sparse に /data/Dictionaries を追加）");
-            foreach (string dictSrc in CreationsDbLoader.ClassDictionaryPaths(src))
+            string[] dictSrcDirs = CreationsDbLoader.DictionaryDirs(src);
+            string[] dictDstDirs = { Path.Combine(dst, "Dictionaries"), Path.Combine(dst, "GlobalDictionaries") };
+            for (int i = 0; i < dictSrcDirs.Length; i++)
             {
-                bool isGlobal = !Path.GetDirectoryName(dictSrc).Equals(Path.Combine(src, "Dictionaries"), System.StringComparison.OrdinalIgnoreCase);
-                string dir = Path.Combine(dst, isGlobal ? "GlobalDictionaries" : "Dictionaries");
-                Directory.CreateDirectory(dir);
-                File.Copy(dictSrc, Path.Combine(dir, Path.GetFileName(dictSrc)), true);
+                var files = CreationsDbLoader.ClassDictionaryFiles(dictSrcDirs[i]);
+                files.Add(CreationsDbLoader.DictionaryCatalogName);
+                foreach (string file in files)
+                {
+                    string from = Path.Combine(dictSrcDirs[i], file);
+                    if (!File.Exists(from)) continue;
+                    string to = Path.Combine(dictDstDirs[i], file);
+                    Directory.CreateDirectory(Path.GetDirectoryName(to));
+                    File.Copy(from, to, true);
+                }
             }
 
             int copiedImages = 0, releasedCount = 0;

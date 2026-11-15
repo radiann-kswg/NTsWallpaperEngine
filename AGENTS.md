@@ -42,6 +42,7 @@
 - サイネージが使用するのは `data/Works_NumberTales/` のうち **`db_Primary` / `db_SemiPrimary` / `db_SelfSecondary` の3DBのみ**。sparse-checkout でこの範囲だけを取り込む:
   - `data/Works_NumberTales/DataBases/`（3つの `db_*.json` とメタ）
   - `data/Works_NumberTales/Dictionaries/`（`dict_Class.json` のClass英文表記などの辞書）
+  - `data/Dictionaries/`（作品共通の辞書。所属組織ごとのクラス辞書は `Class/` 配下。どの辞書を読むかは各 `Dictionaries/db_meta.json` の `keyField` / `dictFile` で決まり、`CreationsDbLoader.ClassDictionaryFiles` がそれに従う）
   - `data/Works_NumberTales/Images/DB_Primary|DB_SemiPrimary|DB_SelfSecondary/corefolder/`（**キャラ画像は `concept` ではなく `corefolder` を使用**）
   - `data/Works_NumberTales/RoleplayPrompts/`（ロールプレイ正本の参照用）
 - クローン直後のセットアップは `scripts/setup-submodule.ps1`（Windows）/ `scripts/setup-submodule.sh`（Linux/macOS）を実行する。sparse設定は `.gitmodules` に保存されないため、**新規クローン時は必ずこのスクリプトを使う**。

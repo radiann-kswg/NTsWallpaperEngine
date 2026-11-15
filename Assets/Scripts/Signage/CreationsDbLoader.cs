@@ -110,6 +110,7 @@ namespace NTsWallpaperEngine.Signage
             }
 
             var classDict = LoadClassDictionary(root);
+            var untranslated = new SortedSet<string>(StringComparer.Ordinal);
 
             // パス1: 全DBを読み込み、(DB名, Num文字列) → レコード の索引を作る
             var loaded = new List<(string dbKey, JArray array)>();
@@ -154,10 +155,14 @@ namespace NTsWallpaperEngine.Signage
                 foreach (var token in array)
                 {
                     if (token is not JObject obj) continue;
-                    var record = ParseRecord(obj, dbKey, root, classDict);
+                    var record = ParseRecord(obj, dbKey, root, classDict, untranslated);
                     if (record != null) results.Add(record);
                 }
             }
+
+            // 辞書の場所が変わった・カタログから漏れた等は「和文のまま出る」だけで黙って壊れるので、ここで気づけるようにする
+            if (untranslated.Count > 0)
+                Debug.LogWarning($"[Signage] 英文表記が辞書に無い Class（DB表記のまま表示）: {string.Join(" / ", untranslated)}");
 
             Debug.Log($"[Signage] 表示対象レコード: {results.Count}件 (root: {root})");
             return results;
@@ -210,45 +215,80 @@ namespace NTsWallpaperEngine.Signage
             state[obj] = 2;
         }
 
-        /// <summary>
-        /// クラス辞書（Class → Class_EN）のファイル名パターン。ファイル名は列挙せず、見つかった辞書を全部読む
-        /// （DB側に「シンフォニー.X」用 dict_SymphonyX.json などが増えてもアプリ側の改修を要らなくするため）。
-        /// Class / Class_EN を持たない辞書（dict_Area 等）は併合時に素通りする。
-        /// SignageDbSync（サブモジュール → StreamingAssets 同期）もこのパターンを参照する。
-        /// </summary>
-        public const string ClassDictionaryPattern = "dict_*.json";
+        /// <summary>辞書カタログのファイル名（各 Dictionaries/ フォルダの直下）。</summary>
+        public const string DictionaryCatalogName = "db_meta.json";
 
         /// <summary>
-        /// 作品内辞書（root/Dictionaries/）→ グローバル辞書（作品共通: data/Dictionaries/）の順に返す。
+        /// 辞書フォルダ。[0] = 作品内（root/Dictionaries/）、[1] = グローバル（作品共通: data/Dictionaries/）。
         /// グローバル側は root/GlobalDictionaries/（StreamingAssets同期後）か、
         /// root の一つ上の Dictionaries/（サブモジュール・Pi外部クローン直読み）。
         /// </summary>
-        public static IEnumerable<string> ClassDictionaryPaths(string root)
+        public static string[] DictionaryDirs(string root)
         {
             string global = Path.Combine(root, "GlobalDictionaries");
             if (!Directory.Exists(global))
                 global = Path.GetFullPath(Path.Combine(root, "..", "Dictionaries"));
-            foreach (string dir in new[] { Path.Combine(root, "Dictionaries"), global })
-            {
-                if (!Directory.Exists(dir)) continue;
-                var files = Directory.GetFiles(dir, ClassDictionaryPattern);
-                Array.Sort(files, StringComparer.Ordinal);   // 先勝ちの順序を環境に依らず固定
-                foreach (string f in files) yield return f;
-            }
+            return new[] { Path.Combine(root, "Dictionaries"), global };
         }
 
-        /// <summary>クラス辞書群（Class → Class_EN）を読み込んで併合する。無ければ空辞書。</summary>
+        /// <summary>
+        /// 辞書フォルダ dir にあるクラス辞書（Class → Class_EN）のファイルを、dir からの相対パスで宣言順に返す。
+        /// 場所もファイル名も決め打ちしない: 辞書カタログ（db_meta.json の Dictionaries.#Dict_*）で
+        /// keyField が "Class" の辞書を対象にし、ファイルは dictFile（例 "Class/dict_Mikhail.json"）、
+        /// 未宣言なら dict_&lt;辞書名&gt;.json。創作DB本体（docs/schema-meta-processing.md §3.4）と同じ規則なので、
+        /// DB側で辞書が増えてもサブフォルダへ移ってもアプリ側の改修は要らない。
+        /// SignageDbSync（サブモジュール → StreamingAssets 同期）もこれを参照する。
+        /// </summary>
+        public static List<string> ClassDictionaryFiles(string dir)
+        {
+            var files = new List<string>();
+            string catalogPath = Path.Combine(dir, DictionaryCatalogName);
+            if (!File.Exists(catalogPath))
+            {
+                Debug.LogWarning($"[Signage] 辞書カタログが無い: {catalogPath}");
+                return files;
+            }
+            try
+            {
+                if (JObject.Parse(File.ReadAllText(catalogPath))["Dictionaries"] is not JObject catalog) return files;
+                foreach (var entry in catalog.Properties())
+                {
+                    if (entry.Value is not JObject info || (string)info["keyField"] != "Class") continue;
+                    string file = ((string)info["dictFile"])?.Trim();
+                    if (string.IsNullOrEmpty(file))
+                        file = "dict_" + (entry.Name.StartsWith("#Dict_") ? entry.Name.Substring(6) : entry.Name) + ".json";
+                    files.Add(file);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[Signage] {catalogPath} のパースに失敗: {e.Message}");
+            }
+            return files;
+        }
+
+        /// <summary>
+        /// クラス辞書群（Class → Class_EN）を読み込んで併合する。無ければ空辞書。
+        /// カタログの scopeField（所属ごとの出し分け）は見ず、全辞書を先勝ちで1つにまとめる
+        /// （創作DBの pkg/ クライアントと同じ扱い）。辞書間で同じ Class に別の英文表記が付いたら
+        /// 先勝ちでは正しく出せないので、MergeClassDictionary が警告する。
+        /// </summary>
         static Dictionary<string, string> LoadClassDictionary(string root)
         {
             var dict = new Dictionary<string, string>();
-            foreach (string path in ClassDictionaryPaths(root))
-                MergeClassDictionary(dict, path, Path.GetFileName(path));
+            foreach (string dir in DictionaryDirs(root))
+                foreach (string file in ClassDictionaryFiles(dir))
+                    MergeClassDictionary(dict, Path.Combine(dir, file), file);
             return dict;
         }
 
         static void MergeClassDictionary(Dictionary<string, string> dict, string path, string fileName)
         {
-            if (!File.Exists(path)) return;
+            if (!File.Exists(path))
+            {
+                Debug.LogWarning($"[Signage] 辞書カタログにあるクラス辞書が無い: {path}");
+                return;
+            }
             try
             {
                 foreach (var token in JArray.Parse(File.ReadAllText(path)))
@@ -256,9 +296,12 @@ namespace NTsWallpaperEngine.Signage
                     if (token is not JObject o) continue;
                     string jp = (string)o["Class"];
                     string en = (string)o["Class_EN"];
-                    // 先勝ち（万一キーが重複した場合は先に読んだ辞書を正とする）
-                    if (!string.IsNullOrEmpty(jp) && !string.IsNullOrEmpty(en) && !dict.ContainsKey(jp))
+                    if (string.IsNullOrEmpty(jp) || string.IsNullOrEmpty(en)) continue;
+                    // 先勝ち（キーが重複した場合は先に読んだ辞書を正とする）
+                    if (!dict.TryGetValue(jp, out string first))
                         dict[jp] = en;
+                    else if (first != en)
+                        Debug.LogWarning($"[Signage] Class「{jp}」の英文表記が辞書間で食い違う（{fileName} の「{en}」は使わず「{first}」を表示）");
                 }
             }
             catch (Exception e)
@@ -267,7 +310,8 @@ namespace NTsWallpaperEngine.Signage
             }
         }
 
-        static NtCharacterRecord ParseRecord(JObject obj, string dbKey, string root, Dictionary<string, string> classDict)
+        static NtCharacterRecord ParseRecord(JObject obj, string dbKey, string root,
+            Dictionary<string, string> classDict, ISet<string> untranslated)
         {
             // ShownProgress のみ（それ以外の未公開情報をサイネージへ出さない）
             if (!ShownProgress.Contains((string)obj["Progress"] ?? ""))
@@ -311,8 +355,13 @@ namespace NTsWallpaperEngine.Signage
                 {
                     string name = (string)c;
                     if (string.IsNullOrEmpty(name)) continue;
-                    // クラス辞書群（ClassDictionaryPattern）の英文表記を優先（無い場合のみDB表記のまま）
-                    record.ClassNames.Add(classDict.TryGetValue(name, out var en) ? en : name);
+                    // クラス辞書群（LoadClassDictionary）の英文表記を優先（無い場合のみDB表記のまま）
+                    if (!classDict.TryGetValue(name, out var en))
+                    {
+                        en = name;
+                        untranslated.Add(name);
+                    }
+                    record.ClassNames.Add(en);
                 }
 
             foreach (var rel in corefolder)

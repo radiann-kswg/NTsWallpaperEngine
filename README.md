@@ -94,7 +94,7 @@
 - `StreamingAssets/CreationsDB/` は**git管理外の生成物**。手で編集しない。
 - 表示対象は `Progress` が `released` / `released(beta)` / `stillTentative` / `unreleased` の**いずれかで、かつ corefolder 画像を持つ**レコードだけ。
 - `SameModels_DBLink` を辿って null のフィールドを継承（`Num` / `Num_Badge` / `Progress` / `Images` は継承しない。循環リンクは防御済み）。
-- Class は `dict_Class` / `dict_Triples` と作品共通辞書（レゾンデイトルカンパニー / シンフォニー.XVI）で英文表記へ変換してから出します。
+- Class は英文表記へ変換してから出します。使う辞書は決め打ちせず、辞書カタログ（`Dictionaries/db_meta.json`）で `keyField` が `Class` のものを全部読みます（作品内の `dict_Class` / `dict_Triples` と、作品共通の `data/Dictionaries/Class/` 配下。ファイルの場所はカタログの `dictFile` に従う）。辞書に無い Class は DB 表記のまま出し、Console に警告を残します。
 
 ### 収録状況
 
