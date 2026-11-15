@@ -100,12 +100,12 @@
 
 <!-- roster:start -->
 
-**表示対象 105 体 / 画像 182 枚**（2026-09-21 時点。`Signage/Update README Roster` が自動更新）
+**表示対象 107 体 / 画像 185 枚**（2026-11-15 時点。`Signage/Update README Roster` が自動更新）
 
 | DB | 表示対象 | corefolder 画像 |
 | --- | --- | --- |
 | `db_Primary.json` | 90 | 163 |
-| `db_SemiPrimary.json` | 9 | 13 |
+| `db_SemiPrimary.json` | 11 | 16 |
 | `db_SelfSecondary.json` | 6 | 6 |
 
 <!-- roster:end -->
