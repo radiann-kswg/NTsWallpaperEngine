@@ -28,9 +28,13 @@ namespace NTsWallpaperEngine.Signage.EditorTools
         public const string HudSourcePath = "Assets/Fonts/biz-udpgothic/BIZUDPGothic-Regular.ttf";
         public const string HudAssetPath = OutputDir + "/BIZUDPGothic-Regular SDF.asset";
 
-        /// <summary>PenchantManufacture の正はサブモジュール。Assets 側の .otf は git 管理外の同期コピー（.meta のみ追跡）。</summary>
+        /// <summary>
+        /// PenchantManufacture の正はサブモジュール。Assets 側の .otf は git 管理外の同期コピー（.meta のみ追跡）。
+        /// 同期元は数字 0 ⁰ ₀ だけを numeral 形（斜線が縁から浮く字形）へ差し替えたバリアント（User 指定 2026-11-18）。
+        /// 既定の字形へ戻すときは PenchantManufacture.otf を指し、scripts/setup-submodule.* も揃える。
+        /// </summary>
         public const string PenchantSubmoduleDir = "PenchantManufacture_ImageAssets";
-        public const string PenchantSubmoduleFont = PenchantSubmoduleDir + "/assets/fonts/PenchantManufacture.otf";
+        public const string PenchantSubmoduleFont = PenchantSubmoduleDir + "/assets/fonts/PenchantManufacture-zero-numeral.otf";
 
         /// <summary>サブモジュールの .otf を Assets へコピーして再インポート。差分が無ければ何もしない。</summary>
         [MenuItem("Signage/Sync Penchant Font (submodule → Assets)")]

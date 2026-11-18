@@ -1,4 +1,4 @@
-# NTsWallpaperEngine: 100BeautiesLab_CreationsDB サブモジュールの初期化 + sparse-checkout 設定
+﻿# NTsWallpaperEngine: 100BeautiesLab_CreationsDB サブモジュールの初期化 + sparse-checkout 設定
 # 使い方: リポジトリルートで `pwsh -File scripts/setup-submodule.ps1`
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
@@ -25,5 +25,5 @@ git submodule update --init --depth 1 PenchantManufacture_ImageAssets
 Set-Location PenchantManufacture_ImageAssets
 git sparse-checkout set --no-cone '/*.md' '/LICENSE' '/assets/fonts/**'
 Set-Location ..
-Copy-Item PenchantManufacture_ImageAssets/assets/fonts/PenchantManufacture.otf Assets/Fonts/penchant-manufactuer/PenchantManufacture.otf -Force
+Copy-Item PenchantManufacture_ImageAssets/assets/fonts/PenchantManufacture-zero-numeral.otf Assets/Fonts/penchant-manufactuer/PenchantManufacture.otf -Force
 Write-Host "OK: PenchantManufacture.otf synced from submodule"

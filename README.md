@@ -133,7 +133,7 @@ OSイメージへの組み込み・自動起動・DB日次pullのタイマー設
 | `Assets/Scenes/SignageScene.unity` | 唯一のシーン。`Signage/Build Signage Scene` で作り直せる（手で組まない） |
 | `Assets/Fonts/` | PenchantManufacture（英数・型番）/ Source Han Sans（和文フォールバック）/ BIZ UDPGothic（操作UI専用・SIL OFL 1.1）/ D-DIN |
 | `100BeautiesLab_CreationsDB/` | 創作DBサブモジュール（sparse・**読み取り専用**） |
-| `PenchantManufacture_ImageAssets/` | フォントの正本サブモジュール（sparse）。`Assets/` 側の `.otf` は同期コピー（git管理外・`.meta` のみ追跡） |
+| `PenchantManufacture_ImageAssets/` | フォントの正本サブモジュール（sparse）。`Assets/` 側の `.otf` は同期コピー（git管理外・`.meta` のみ追跡）。同期元は数字 `0` を numeral 形にしたバリアント `PenchantManufacture-zero-numeral.otf` |
 | `scripts/` | `setup-submodule.ps1/.sh`（クローン直後のsparse設定）/ `rpi/run-signage.sh`・`rpi/update-creationsdb.sh`（実機側） |
 | `docs/` | `raspberrypi-handoff.md`（引き渡し資料）/ `captures/`（READMEのプレビューと UnityConsole ランチャー用 `icon.png`） |
 

@@ -26,5 +26,5 @@ git submodule update --init --depth 1 PenchantManufacture_ImageAssets
 cd PenchantManufacture_ImageAssets
 git sparse-checkout set --no-cone '/*.md' '/LICENSE' '/assets/fonts/**'
 cd ..
-cp -f PenchantManufacture_ImageAssets/assets/fonts/PenchantManufacture.otf Assets/Fonts/penchant-manufactuer/PenchantManufacture.otf
+cp -f PenchantManufacture_ImageAssets/assets/fonts/PenchantManufacture-zero-numeral.otf Assets/Fonts/penchant-manufactuer/PenchantManufacture.otf
 echo "OK: PenchantManufacture.otf synced from submodule"
